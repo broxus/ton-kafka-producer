@@ -3,15 +3,6 @@
 version = 3
 
 [[package]]
-name = "aead"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b613b8e1e3cf911a086f53f03bf286f52fd7a7258e4fa606f0ef220d39d8877"
-dependencies = [
- "generic-array",
-]
-
-[[package]]
 name = "aes"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -165,12 +156,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4ae4235e6dac0694637c763029ecea1a2ec9e4e06ec2729bd21ba4d9c863eb7"
 
 [[package]]
-name = "bumpalo"
-version = "3.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9df67f7bf9ef8498769f994239c45613ef0c5899415fb58e9add412d2c1a538"
-
-[[package]]
 name = "byteorder"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -205,31 +190,6 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
-
-[[package]]
-name = "chacha20"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01b72a433d0cf2aef113ba70f62634c56fddb0f244e6377185c56a7cadbd8f91"
-dependencies = [
- "cfg-if",
- "cipher",
- "cpufeatures",
- "zeroize",
-]
-
-[[package]]
-name = "chacha20poly1305"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b84ed6d1d5f7aa9bdde921a5090e0ca4d934d250ea3b402a5fab3a994e28a2a"
-dependencies = [
- "aead",
- "chacha20",
- "cipher",
- "poly1305",
- "zeroize",
-]
 
 [[package]]
 name = "chrono"
@@ -879,15 +839,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "js-sys"
-version = "0.3.55"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cc9ffccd38c451a86bf13657df244e9c3f37493cce8e5e21e940963777acc84"
-dependencies = [
- "wasm-bindgen",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1053,64 +1004,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "nekoton-abi"
-version = "0.7.0"
-source = "git+https://github.com/broxus/nekoton.git#a1eca3572de1286e0deceaaf7fc1dee6e8d0680a"
-dependencies = [
- "anyhow",
- "base64",
- "chrono",
- "ed25519-dalek",
- "hex",
- "log",
- "nekoton-derive",
- "nekoton-utils",
- "num-bigint",
- "num-traits",
- "serde",
- "serde_json",
- "sha2",
- "smallvec",
- "thiserror",
- "ton_abi",
- "ton_block",
- "ton_executor",
- "ton_types",
- "ton_vm",
-]
-
-[[package]]
-name = "nekoton-derive"
-version = "0.7.0"
-source = "git+https://github.com/broxus/nekoton.git#a1eca3572de1286e0deceaaf7fc1dee6e8d0680a"
-dependencies = [
- "either",
- "proc-macro2 1.0.29",
- "quote 1.0.10",
- "syn 1.0.78",
-]
-
-[[package]]
 name = "nekoton-utils"
 version = "0.7.0"
-source = "git+https://github.com/broxus/nekoton.git#a1eca3572de1286e0deceaaf7fc1dee6e8d0680a"
+source = "git+https://github.com/broxus/nekoton.git#1223a1c2d8275f01e50ddbb4180b7a34ce7fafff"
 dependencies = [
  "anyhow",
  "base64",
- "chacha20poly1305",
  "ed25519-dalek",
  "hex",
  "log",
  "num-bigint",
  "num-traits",
- "ring",
- "secstr",
  "serde",
  "sha2",
  "thiserror",
  "ton_block",
  "ton_types",
- "zeroize",
 ]
 
 [[package]]
@@ -1378,17 +1287,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c9b1041b4387893b91ee6746cddfc28516aff326a3519fb2adf820932c5e6cb"
 
 [[package]]
-name = "poly1305"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "048aeb476be11a4b6ca432ca569e375810de9294ae78f4774e78ea98a9246ede"
-dependencies = [
- "cpufeatures",
- "opaque-debug",
- "universal-hash",
-]
-
-[[package]]
 name = "pom"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1602,21 +1500,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
-name = "ring"
-version = "0.16.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3053cf52e236a3ed746dfc745aa9cacf1b791d846bdaf412f60a8d7d6e17c8fc"
-dependencies = [
- "cc",
- "libc",
- "once_cell",
- "spin",
- "untrusted",
- "web-sys",
- "winapi",
-]
-
-[[package]]
 name = "rlimit"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1767,12 +1650,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spin"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
-
-[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1783,12 +1660,6 @@ name = "strsim"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6446ced80d6c486436db5c078dde11a9f73d42b57fb273121e160b84f63d894c"
-
-[[package]]
-name = "subtle"
-version = "2.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "subtle-ng"
@@ -2010,7 +1881,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#52ff30fc2edf7f86bdb1de1546e475fc3247aaac"
+source = "git+https://github.com/broxus/ton-indexer.git#6279f00c3c350d3ddd7a94c9402757d3193731c6"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2049,7 +1920,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#52ff30fc2edf7f86bdb1de1546e475fc3247aaac"
+source = "git+https://github.com/broxus/ton-indexer.git#6279f00c3c350d3ddd7a94c9402757d3193731c6"
 dependencies = [
  "errno",
  "log",
@@ -2065,14 +1936,14 @@ dependencies = [
  "argh",
  "async-trait",
  "base64",
+ "chrono",
  "config",
  "futures",
  "hex",
  "log",
  "log4rs",
- "nekoton-abi",
- "nekoton-utils",
  "num-bigint",
+ "once_cell",
  "public-ip",
  "rdkafka",
  "regex",
@@ -2083,32 +1954,8 @@ dependencies = [
  "tiny-adnl",
  "tokio",
  "ton-indexer",
- "ton_abi",
  "ton_block",
  "ton_block_json",
- "ton_types",
-]
-
-[[package]]
-name = "ton_abi"
-version = "2.1.0"
-source = "git+https://github.com/broxus/ton-labs-abi#a5f3dc33b3531288b6ae428cfbd365d3e36e5ad0"
-dependencies = [
- "anyhow",
- "base64",
- "byteorder",
- "chrono",
- "ed25519",
- "ed25519-dalek",
- "hex",
- "num-bigint",
- "num-traits",
- "serde",
- "serde_json",
- "sha2",
- "smallvec",
- "thiserror",
- "ton_block",
  "ton_types",
 ]
 
@@ -2172,23 +2019,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ton_executor"
-version = "1.0.0"
-source = "git+https://github.com/broxus/ton-labs-executor.git#34a25d80d0a7fa8bb5ed4b3e71684198322ad2ea"
-dependencies = [
- "anyhow",
- "base64",
- "clear_on_drop",
- "log",
- "num",
- "num-traits",
- "thiserror",
- "ton_block",
- "ton_types",
- "ton_vm",
-]
-
-[[package]]
 name = "ton_tl_codegen"
 version = "0.0.1"
 source = "git+https://github.com/broxus/ton-labs-tl.git#83171d8ad76695a3ca4956abdfededa071538041"
@@ -2222,25 +2052,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ton_vm"
-version = "1.0.0"
-source = "git+https://github.com/broxus/ton-labs-vm.git#c9b4644a2aca3b50c74bd4cf8b68c02638235f3a"
-dependencies = [
- "anyhow",
- "ed25519",
- "ed25519-dalek",
- "hex",
- "log",
- "num",
- "num-traits",
- "rand",
- "sha2",
- "smallvec",
- "thiserror",
- "ton_types",
-]
-
-[[package]]
 name = "tower-service"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2260,9 +2071,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.16"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98863d0dd09fa59a1b79c6750ad80dbda6b75f4e71c437a6a1a8cb91a8bcbd77"
+checksum = "f4f480b8f81512e825f337ad51e94c1eb5d3bbdf2b363dcd01e2b19a9ffe3f8e"
 dependencies = [
  "proc-macro2 1.0.29",
  "quote 1.0.10",
@@ -2396,16 +2207,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
 
 [[package]]
-name = "universal-hash"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f214e8f697e925001e66ec2c6e37a4ef93f0f78c2eed7814394e10c62025b05"
-dependencies = [
- "generic-array",
- "subtle",
-]
-
-[[package]]
 name = "unsafe-any"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2413,12 +2214,6 @@ checksum = "f30360d7979f5e9c6e6cea48af192ea8fab4afb3cf72597154b8f08935bc9c7f"
 dependencies = [
  "traitobject",
 ]
-
-[[package]]
-name = "untrusted"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "url"
@@ -2459,70 +2254,6 @@ name = "wasi"
 version = "0.10.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
-
-[[package]]
-name = "wasm-bindgen"
-version = "0.2.78"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "632f73e236b219150ea279196e54e610f5dbafa5d61786303d4da54f84e47fce"
-dependencies = [
- "cfg-if",
- "wasm-bindgen-macro",
-]
-
-[[package]]
-name = "wasm-bindgen-backend"
-version = "0.2.78"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a317bf8f9fba2476b4b2c85ef4c4af8ff39c3c7f0cdfeed4f82c34a880aa837b"
-dependencies = [
- "bumpalo",
- "lazy_static",
- "log",
- "proc-macro2 1.0.29",
- "quote 1.0.10",
- "syn 1.0.78",
- "wasm-bindgen-shared",
-]
-
-[[package]]
-name = "wasm-bindgen-macro"
-version = "0.2.78"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d56146e7c495528bf6587663bea13a8eb588d39b36b679d83972e1a2dbbdacf9"
-dependencies = [
- "quote 1.0.10",
- "wasm-bindgen-macro-support",
-]
-
-[[package]]
-name = "wasm-bindgen-macro-support"
-version = "0.2.78"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7803e0eea25835f8abdc585cd3021b3deb11543c6fe226dcd30b228857c5c5ab"
-dependencies = [
- "proc-macro2 1.0.29",
- "quote 1.0.10",
- "syn 1.0.78",
- "wasm-bindgen-backend",
- "wasm-bindgen-shared",
-]
-
-[[package]]
-name = "wasm-bindgen-shared"
-version = "0.2.78"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0237232789cf037d5480773fe568aac745bfe2afbc11a863e97901780a6b47cc"
-
-[[package]]
-name = "web-sys"
-version = "0.3.55"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38eb105f1c59d9eaa6b5cdc92b859d85b926e82cb2e0945cd0c9259faa6fe9fb"
-dependencies = [
- "js-sys",
- "wasm-bindgen",
-]
 
 [[package]]
 name = "winapi"

@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -27,12 +26,7 @@ impl KafkaProducer {
         Ok(Self { config, producer })
     }
 
-    pub async fn write<T: AsRef<[u8]>>(
-        &self,
-        key: T,
-        value: T,
-        timestamp: Option<i64>,
-    ) -> Result<()> {
+    pub async fn write(&self, key: Vec<u8>, value: Vec<u8>, timestamp: Option<i64>) -> Result<()> {
         const HEADER_NAME: &str = "raw_block_timestamp";
 
         let header_value = timestamp.unwrap_or_default().to_be_bytes();
@@ -43,8 +37,8 @@ impl KafkaProducer {
         loop {
             let producer_future = self.producer.send(
                 rdkafka::producer::FutureRecord::to(&self.config.topic)
-                    .key(key.as_ref())
-                    .payload(value.as_ref())
+                    .key(&key)
+                    .payload(&value)
                     .headers(headers.clone()),
                 rdkafka::util::Timeout::Never,
             );
