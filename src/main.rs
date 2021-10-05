@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use argh::FromArgs;
 use serde::Deserialize;
 use ton_kafka_producer::config::*;
+use ton_kafka_producer::engine::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -17,9 +18,15 @@ async fn run(app: App) -> Result<()> {
 
     log::info!("Initializing producer...");
 
-    // TODO
+    let engine = Engine::new(config, _global_config)
+        .await
+        .context("Failed to create engine")?;
 
-    Ok(())
+    engine.start().await.context("Failed to start engine")?;
+
+    log::info!("Initialized producer");
+
+    futures::future::pending().await
 }
 
 #[derive(Debug, PartialEq, FromArgs)]

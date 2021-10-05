@@ -15,6 +15,9 @@ pub struct AppConfig {
     #[serde(default)]
     pub node_settings: NodeConfig,
 
+    /// Kafka topics settings
+    pub kafka_settings: KafkaConfig,
+
     /// log4rs settings.
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
     #[serde(default = "default_logger_settings")]
@@ -96,6 +99,27 @@ impl Default for NodeConfig {
             parallel_archive_downloads: 16,
         }
     }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct KafkaConfig {
+    pub block_producer: Option<KafkaProducerConfig>,
+    pub raw_block_producer: Option<KafkaProducerConfig>,
+    pub message_producer: Option<KafkaProducerConfig>,
+    pub transaction_producer: Option<KafkaProducerConfig>,
+    pub account_producer: Option<KafkaProducerConfig>,
+    pub block_proof_producer: Option<KafkaProducerConfig>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct KafkaProducerConfig {
+    pub topic: String,
+    pub brokers: String,
+    pub message_timeout_ms: Option<u32>,
+    pub message_max_size: Option<usize>,
+    pub attempt_interval_ms: u64,
+    // TODO: add SASL
 }
 
 impl ConfigExt for ton_indexer::GlobalConfig {
