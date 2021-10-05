@@ -1,0 +1,6 @@
+/target
+.idea
+
+db/
+config.yaml
+ton-global.config.json

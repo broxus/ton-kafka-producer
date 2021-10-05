@@ -1,0 +1,37 @@
+[package]
+name = "ton-kafka-producer"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0"
+argh = "0.1"
+async-trait = "0.1"
+base64 = "0.13"
+config = { version = "0.11", default-features = false, features = ["yaml"] }
+hex = "0.4"
+log = "0.4"
+log4rs = "1.0"
+num-bigint = "0.3"
+public-ip = "0.2"
+regex = "1.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.8"
+thiserror = "1.0"
+tokio = { version = "1.6", features = ["sync", "fs", "rt-multi-thread", "macros"] }
+
+# TON specific dependencies
+ton_block = { git = "https://github.com/broxus/ton-labs-block" }
+ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
+ton_abi = { git = "https://github.com/broxus/ton-labs-abi" }
+ton_types = { git = "https://github.com/broxus/ton-labs-types" }
+
+tiny-adnl = { git = "https://github.com/broxus/tiny-adnl" }
+
+# Nekoton SDK
+nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"] }
+nekoton-utils = { git = "https://github.com/broxus/nekoton.git", features = ["encryption"] }
+
+# Indexer engine
+ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
