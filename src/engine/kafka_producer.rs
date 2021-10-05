@@ -21,6 +21,15 @@ impl KafkaProducer {
             client_config.set("message.max.bytes", message_max_size.to_string());
         }
 
+        if let Some(SecurityConfig::Sasl(sasl)) = &config.security_config {
+            client_config
+                .set("security.protocol", &sasl.security_protocol)
+                .set("ssl.ca.location", &sasl.ssl_ca_location)
+                .set("sasl.mechanism", &sasl.sasl_mechanism)
+                .set("sasl.username", &sasl.sasl_username)
+                .set("sasl.password", &sasl.sasl_password);
+        }
+
         let producer = client_config.create()?;
 
         Ok(Self { config, producer })

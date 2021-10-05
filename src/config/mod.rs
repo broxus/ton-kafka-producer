@@ -119,7 +119,22 @@ pub struct KafkaProducerConfig {
     pub message_timeout_ms: Option<u32>,
     pub message_max_size: Option<usize>,
     pub attempt_interval_ms: u64,
-    // TODO: add SASL
+    #[serde(default)]
+    pub security_config: Option<SecurityConfig>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub enum SecurityConfig {
+    Sasl(SaslConfig),
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug, Clone)]
+pub struct SaslConfig {
+    pub security_protocol: String,
+    pub ssl_ca_location: String,
+    pub sasl_mechanism: String,
+    pub sasl_username: String,
+    pub sasl_password: String,
 }
 
 impl ConfigExt for ton_indexer::GlobalConfig {
