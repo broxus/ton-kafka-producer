@@ -8,7 +8,6 @@ anyhow = "1.0"
 argh = "0.1"
 async-trait = "0.1"
 base64 = "0.13"
-ton-block-compressor = { git = "ssh://git@gitlab.dexpa.io/beton/ton-block-compressor.git" }
 chrono = "0.4"
 config = { version = "0.11", default-features = false, features = ["yaml"] }
 futures = "0.3"

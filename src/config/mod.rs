@@ -11,8 +11,6 @@ mod temp_keys;
 /// Main application config (full). Used to run relay
 #[derive(Serialize, Deserialize)]
 pub struct AppConfig {
-    /// use zstd compression for raw blocks
-    pub compress: bool,
     /// TON node settings
     #[serde(default)]
     pub node_settings: NodeConfig,

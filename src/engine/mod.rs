@@ -5,13 +5,11 @@ use futures::TryStreamExt;
 use once_cell::sync::OnceCell;
 use tiny_adnl::utils::*;
 use ton_block::{Deserializable, HashmapAugType, Serializable};
-use ton_block_compressor::ZstdWrapper;
 use ton_indexer::utils::*;
 use ton_types::{HashmapType, UInt256};
 
-use crate::config::*;
-
 use self::kafka_producer::*;
+use crate::config::*;
 
 mod kafka_producer;
 
@@ -25,7 +23,7 @@ impl Engine {
         global_config: ton_indexer::GlobalConfig,
     ) -> Result<Arc<Self>> {
         let subscriber: Arc<dyn ton_indexer::Subscriber> =
-            TonSubscriber::new(config.kafka_settings, config.compress)?;
+            TonSubscriber::new(config.kafka_settings)?;
 
         let indexer = ton_indexer::Engine::new(
             config
@@ -55,19 +53,14 @@ struct TonSubscriber {
     transaction_producer: Option<KafkaProducer>,
     account_producer: Option<KafkaProducer>,
     block_proof_producer: Option<KafkaProducer>,
-    compressor: Option<ZstdWrapper>,
 }
 
 impl TonSubscriber {
-    fn new(config: KafkaConfig, compress: bool) -> Result<Arc<Self>> {
+    fn new(config: KafkaConfig) -> Result<Arc<Self>> {
         fn make_producer(config: Option<KafkaProducerConfig>) -> Result<Option<KafkaProducer>> {
             config.map(KafkaProducer::new).transpose()
         }
-        let compressor = if compress {
-            Some(Default::default())
-        } else {
-            None
-        };
+
         Ok(Arc::new(Self {
             block_producer: make_producer(config.block_producer)?,
             raw_block_producer: make_producer(config.raw_block_producer)?,
@@ -75,7 +68,6 @@ impl TonSubscriber {
             transaction_producer: make_producer(config.transaction_producer)?,
             account_producer: make_producer(config.account_producer)?,
             block_proof_producer: make_producer(config.block_proof_producer)?,
-            compressor,
         }))
     }
 }
@@ -243,13 +235,10 @@ impl TonSubscriber {
 
         // Process raw block
         if self.raw_block_producer.is_some() {
-            let data = if let Some(ref a) = self.compressor {
-                a.compress_owned(block_stuff.data())
-                    .expect("Something very bad happened")
-            } else {
-                block_stuff.data().to_vec()
-            };
-            records.push(prepare_raw_block_record(&block_id.root_hash, data)?);
+            records.push(prepare_raw_block_record(
+                &block_id.root_hash,
+                block_stuff.data().to_vec(),
+            )?);
         }
 
         // Done
