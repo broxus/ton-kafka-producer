@@ -5,9 +5,11 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
+axum = "0.2.8"
 argh = "0.1"
 async-trait = "0.1"
 base64 = "0.13"
+bincode = "1.3.3"
 ton-block-compressor = { git = "ssh://git@gitlab.dexpa.io/beton/ton-block-compressor.git" }
 chrono = "0.4"
 config = { version = "0.11", default-features = false, features = ["yaml"] }
@@ -18,7 +20,8 @@ log4rs = "1.0"
 num-bigint = "0.3"
 once_cell = "1.8"
 public-ip = "0.2"
-rdkafka = "0.26"
+parking_lot = "0.11.2"
+rdkafka = { version="0.26",features=["sasl"] }
 regex = "1.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -27,6 +30,9 @@ thiserror = "1.0"
 tokio = { version = "1.6", features = ["sync", "fs", "rt-multi-thread", "macros"] }
 
 # TON specific dependencies
+nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
+nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
+
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }
 ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
