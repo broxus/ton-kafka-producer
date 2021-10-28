@@ -5,6 +5,7 @@ use futures::TryStreamExt;
 use once_cell::sync::OnceCell;
 use tiny_adnl::utils::*;
 use ton_block::{Deserializable, HashmapAugType, Serializable};
+use ton_block_compressor::ZstdWrapper;
 use ton_indexer::utils::*;
 use ton_types::{HashmapType, UInt256};
 
@@ -48,6 +49,7 @@ impl Engine {
 }
 
 struct TonSubscriber {
+    compressor: ton_block_compressor::ZstdWrapper,
     block_producer: Option<KafkaProducer>,
     raw_block_producer: Option<KafkaProducer>,
     raw_transaction_producer: Option<KafkaProducer>,
@@ -64,6 +66,7 @@ impl TonSubscriber {
         }
 
         Ok(Arc::new(Self {
+            compressor: Default::default(),
             block_producer: make_producer(config.block_producer)?,
             raw_block_producer: make_producer(config.raw_block_producer)?,
             raw_transaction_producer: make_producer(config.raw_transaction_producer)?,
@@ -209,7 +212,10 @@ impl TonSubscriber {
                         account_block
                             .transactions()
                             .iterate_slices(|_, raw_transaction| {
-                                records.push(prepare_raw_transaction_record(raw_transaction)?);
+                                records.push(prepare_raw_transaction_record(
+                                    &self.compressor,
+                                    raw_transaction,
+                                )?);
                                 Ok(true)
                             })?;
                     }
@@ -368,9 +374,13 @@ fn prepare_transaction_record(
     ))
 }
 
-fn prepare_raw_transaction_record(raw_transaction: ton_types::SliceData) -> Result<DbRecord> {
+fn prepare_raw_transaction_record(
+    compressor: &ZstdWrapper,
+    raw_transaction: ton_types::SliceData,
+) -> Result<DbRecord> {
     let cell = raw_transaction.reference(0)?;
     let boc = ton_types::serialize_toc(&cell)?;
+    let boc = compressor.compress_owned(&boc)?;
     let hash = raw_transaction
         .hash(ton_types::DEPTH_SIZE)
         .as_slice()
