@@ -8,8 +8,9 @@ use ton_block::{Deserializable, HashmapAugType, Serializable};
 use ton_indexer::utils::*;
 use ton_types::{HashmapType, UInt256};
 
-use self::kafka_producer::*;
 use crate::config::*;
+
+use self::kafka_producer::*;
 
 mod kafka_producer;
 
@@ -49,6 +50,7 @@ impl Engine {
 struct TonSubscriber {
     block_producer: Option<KafkaProducer>,
     raw_block_producer: Option<KafkaProducer>,
+    raw_transaction_producer: Option<KafkaProducer>,
     message_producer: Option<KafkaProducer>,
     transaction_producer: Option<KafkaProducer>,
     account_producer: Option<KafkaProducer>,
@@ -64,6 +66,7 @@ impl TonSubscriber {
         Ok(Arc::new(Self {
             block_producer: make_producer(config.block_producer)?,
             raw_block_producer: make_producer(config.raw_block_producer)?,
+            raw_transaction_producer: make_producer(config.raw_transaction_producer)?,
             message_producer: make_producer(config.message_producer)?,
             transaction_producer: make_producer(config.transaction_producer)?,
             account_producer: make_producer(config.account_producer)?,
@@ -122,6 +125,12 @@ impl TonSubscriber {
                         futures.push(producer.write(key, value, Some(now)));
                     }
                 }
+                DbRecord::RawTransaction(key, value) => {
+                    if let Some(producer) = &self.raw_transaction_producer {
+                        let now = chrono::Utc::now().timestamp();
+                        futures.push(producer.write(key, value, Some(now)));
+                    }
+                }
             }
         }
 
@@ -166,6 +175,7 @@ impl TonSubscriber {
         let mut deleted_accounts = FxHashSet::default();
 
         let process_transactions = self.transaction_producer.is_some();
+        let process_raw_transactions = self.raw_transaction_producer.is_some();
         let process_accounts = self.account_producer.is_some();
         if process_transactions || process_accounts {
             let workchain_id = block_id.shard_id.workchain_id();
@@ -192,6 +202,14 @@ impl TonSubscriber {
                                     &block_id.root_hash,
                                     workchain_id,
                                 )?);
+                                Ok(true)
+                            })?;
+                    }
+                    if process_raw_transactions {
+                        account_block
+                            .transactions()
+                            .iterate_slices(|_, raw_transaction| {
+                                records.push(prepare_raw_transaction_record(raw_transaction)?);
                                 Ok(true)
                             })?;
                     }
@@ -350,6 +368,17 @@ fn prepare_transaction_record(
     ))
 }
 
+fn prepare_raw_transaction_record(raw_transaction: ton_types::SliceData) -> Result<DbRecord> {
+    let cell = raw_transaction.reference(0)?;
+    let boc = ton_types::serialize_toc(&cell)?;
+    let hash = raw_transaction
+        .hash(ton_types::DEPTH_SIZE)
+        .as_slice()
+        .to_vec();
+
+    Ok(DbRecord::RawTransaction(hash, boc))
+}
+
 fn prepare_account_record(account: ton_block::ShardAccount) -> Result<DbRecord> {
     let boc = ton_types::serialize_toc(&account.account_cell())?;
     let account = account.read_account()?;
@@ -427,6 +456,7 @@ fn default_account_hash() -> &'static UInt256 {
 enum DbRecord {
     Message(String, String),
     Transaction(String, String),
+    RawTransaction(Vec<u8>, Vec<u8>),
     Account(String, String),
     BlockProof(String, String),
     Block(String, String),

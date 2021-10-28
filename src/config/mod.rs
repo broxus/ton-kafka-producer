@@ -75,6 +75,8 @@ impl NodeConfig {
             file_db_path: self.db_path.join("files"),
             // NOTE: State GC is disabled until it is fully tested
             state_gc_options: None,
+            blocks_gc_options: None,
+            archives_enabled: false,
             old_blocks_policy: Default::default(),
             shard_state_cache_enabled: false,
             max_db_memory_usage: self.max_db_memory_usage,
@@ -106,6 +108,7 @@ impl Default for NodeConfig {
 pub struct KafkaConfig {
     pub block_producer: Option<KafkaProducerConfig>,
     pub raw_block_producer: Option<KafkaProducerConfig>,
+    pub raw_transaction_producer: Option<KafkaProducerConfig>,
     pub message_producer: Option<KafkaProducerConfig>,
     pub transaction_producer: Option<KafkaProducerConfig>,
     pub account_producer: Option<KafkaProducerConfig>,
