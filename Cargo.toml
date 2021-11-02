@@ -8,6 +8,7 @@ anyhow = "1.0"
 argh = "0.1"
 async-trait = "0.1"
 base64 = "0.13"
+bincode = "1.3.3"
 chrono = "0.4"
 config = { version = "0.11", default-features = false, features = ["yaml"] }
 futures = "0.3"
@@ -25,12 +26,19 @@ serde_yaml = "0.8"
 thiserror = "1.0"
 tokio = { version = "1.6", features = ["sync", "fs", "rt-multi-thread", "macros"] }
 ton-block-compressor = { git = "ssh://git@gitlab.dexpa.io/beton/ton-block-compressor.git" }
+warp = "0.3.1"
+parking_lot = "0.11.2"
+rustc-hash = "1.1.0"
 
 
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }
 ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
+
+nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
+nekoton-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
+nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 
 tiny-adnl = { git = "https://github.com/broxus/tiny-adnl" }
 

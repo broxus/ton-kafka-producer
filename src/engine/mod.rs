@@ -12,8 +12,10 @@ use ton_types::{HashmapType, UInt256};
 use crate::config::*;
 
 use self::kafka_producer::*;
+use self::shard_accounts_subscriber::*;
 
 mod kafka_producer;
+pub mod shard_accounts_subscriber;
 
 pub struct Engine {
     indexer: Arc<ton_indexer::Engine>,
@@ -23,9 +25,10 @@ impl Engine {
     pub async fn new(
         config: AppConfig,
         global_config: ton_indexer::GlobalConfig,
+        shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
     ) -> Result<Arc<Self>> {
         let subscriber: Arc<dyn ton_indexer::Subscriber> =
-            TonSubscriber::new(config.kafka_settings)?;
+            TonSubscriber::new(config.kafka_settings, shard_accounts_subscriber)?;
 
         let indexer = ton_indexer::Engine::new(
             config
@@ -57,10 +60,14 @@ struct TonSubscriber {
     transaction_producer: Option<KafkaProducer>,
     account_producer: Option<KafkaProducer>,
     block_proof_producer: Option<KafkaProducer>,
+    shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
 }
 
 impl TonSubscriber {
-    fn new(config: KafkaConfig) -> Result<Arc<Self>> {
+    fn new(
+        config: KafkaConfig,
+        shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
+    ) -> Result<Arc<Self>> {
         fn make_producer(config: Option<KafkaProducerConfig>) -> Result<Option<KafkaProducer>> {
             config.map(KafkaProducer::new).transpose()
         }
@@ -74,6 +81,7 @@ impl TonSubscriber {
             transaction_producer: make_producer(config.transaction_producer)?,
             account_producer: make_producer(config.account_producer)?,
             block_proof_producer: make_producer(config.block_proof_producer)?,
+            shard_accounts_subscriber,
         }))
     }
 }
@@ -136,6 +144,10 @@ impl TonSubscriber {
                 }
             }
         }
+
+        self.shard_accounts_subscriber
+            .handle_block(block_stuff, shard_state)
+            .await?;
 
         futures.try_collect::<Vec<_>>().await?;
 
