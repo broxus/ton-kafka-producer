@@ -1,4 +1,4 @@
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -9,8 +9,10 @@ use self::temp_keys::*;
 mod temp_keys;
 
 /// Main application config (full). Used to run relay
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AppConfig {
+    /// serve states
+    pub rpc_config: Option<StatesConfig>,
     /// TON node settings
     #[serde(default)]
     pub node_settings: NodeConfig,
@@ -25,7 +27,7 @@ pub struct AppConfig {
 }
 
 /// TON node settings
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(default, deny_unknown_fields)]
 pub struct NodeConfig {
     /// Node public ip. Automatically determines if None
@@ -103,7 +105,12 @@ impl Default for NodeConfig {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StatesConfig {
+    pub address: SocketAddr,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct KafkaConfig {
     pub block_producer: Option<KafkaProducerConfig>,
@@ -115,7 +122,7 @@ pub struct KafkaConfig {
     pub block_proof_producer: Option<KafkaProducerConfig>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct KafkaProducerConfig {
     pub topic: String,
     pub brokers: String,

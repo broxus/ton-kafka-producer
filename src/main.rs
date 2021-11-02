@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use anyhow::{Context, Result};
 use argh::FromArgs;
 use serde::Deserialize;
-use std::sync::Arc;
+
 use ton_kafka_producer::config::*;
 use ton_kafka_producer::engine::shard_accounts_subscriber::ShardAccountsSubscriber;
 use ton_kafka_producer::engine::*;
@@ -23,16 +25,21 @@ async fn run(app: App) -> Result<()> {
 
     let shard_accounts_subscriber = Arc::new(ShardAccountsSubscriber::default());
 
-    let engine = Engine::new(config, _global_config, shard_accounts_subscriber.clone())
-        .await
-        .context("Failed to create engine")?;
+    let engine = Engine::new(
+        config.clone(),
+        _global_config,
+        shard_accounts_subscriber.clone(),
+    )
+    .await
+    .context("Failed to create engine")?;
 
     engine.start().await.context("Failed to start engine")?;
 
-    rpc::serve(shard_accounts_subscriber, "0.0.0.0:12345".parse().unwrap()).await;
+    if let Some(config) = config.rpc_config {
+        rpc::serve(shard_accounts_subscriber, config.address).await;
+    }
 
     log::info!("Initialized producer");
-
     futures::future::pending().await
 }
 
