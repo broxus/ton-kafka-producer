@@ -395,6 +395,7 @@ fn prepare_raw_transaction_record(
     compressor: &ZstdWrapper,
     raw_transaction: ton_types::SliceData,
 ) -> Result<DbRecord> {
+    log::error!("AAAAAAAAAAAAAAAA");
     let cell = raw_transaction.reference(0)?;
     let boc = ton_types::serialize_toc(&cell)?;
     let boc = compressor.compress_owned(&boc)?;
