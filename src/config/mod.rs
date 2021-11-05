@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use ton_indexer::{BlocksGcOptions, BlocksGcType, OldBlocksPolicy};
+use ton_indexer::{BlocksGcKind, BlocksGcOptions, OldBlocksPolicy, ShardStateCacheOptions};
 
 use self::temp_keys::*;
 
@@ -87,12 +87,12 @@ impl NodeConfig {
             // NOTE: State GC is disabled until it is fully tested
             state_gc_options: None,
             blocks_gc_options: Some(BlocksGcOptions {
-                ty: BlocksGcType::BeforePreviousKeyBlock,
+                kind: BlocksGcKind::BeforePreviousKeyBlock,
                 enable_for_sync: true,
             }),
+            shard_state_cache_options: Some(ShardStateCacheOptions::default()),
             archives_enabled: false,
             old_blocks_policy: old_blocks,
-            shard_state_cache_enabled: true,
             max_db_memory_usage: self.max_db_memory_usage,
             parallel_archive_downloads: self.parallel_archive_downloads,
             adnl_options: Default::default(),
@@ -205,6 +205,7 @@ enum ConfigError {
     PublicIpNotFound,
 }
 
+#[cfg(test)]
 mod test {
     use crate::config::{
         AppConfig, KafkaConfig, KafkaProducerConfig, SaslConfig, SecurityConfig, StatesConfig,

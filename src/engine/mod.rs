@@ -7,6 +7,7 @@ use tiny_adnl::utils::*;
 use ton_block::{Deserializable, HashmapAugType, Serializable};
 use ton_block_compressor::ZstdWrapper;
 use ton_indexer::utils::*;
+use ton_indexer::BriefBlockMeta;
 use ton_types::{HashmapType, UInt256};
 
 use crate::config::*;
@@ -286,6 +287,7 @@ impl TonSubscriber {
 impl ton_indexer::Subscriber for TonSubscriber {
     async fn process_block(
         &self,
+        _meta: BriefBlockMeta,
         block: &BlockStuff,
         block_proof: Option<&BlockProofStuff>,
         shard_state: &ShardStateStuff,
@@ -296,6 +298,7 @@ impl ton_indexer::Subscriber for TonSubscriber {
 
     async fn process_archive_block(
         &self,
+        _meta: BriefBlockMeta,
         block: &BlockStuff,
         block_proof: Option<&BlockProofStuff>,
     ) -> Result<()> {
