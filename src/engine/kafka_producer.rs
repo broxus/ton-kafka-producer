@@ -36,7 +36,6 @@ impl KafkaProducer {
     }
 
     pub async fn write(&self, key: Vec<u8>, value: Vec<u8>, timestamp: Option<i64>) -> Result<()> {
-        log::info!("Writing to kafka");
         const HEADER_NAME: &str = "raw_block_timestamp";
 
         let header_value = timestamp.unwrap_or_default().to_be_bytes();
