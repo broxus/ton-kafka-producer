@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use futures::TryStreamExt;
 use once_cell::sync::OnceCell;
 use tiny_adnl::utils::*;
-use ton_block::{Deserializable, HashmapAugType, Serializable};
+use ton_block::{Deserializable, HashmapAugType, Serializable, TransactionDescr};
 use ton_block_compressor::ZstdWrapper;
 use ton_indexer::utils::*;
 use ton_indexer::BriefBlockMeta;
@@ -193,7 +193,7 @@ impl TonSubscriber {
         let process_transactions = self.transaction_producer.is_some();
         let process_raw_transactions = self.raw_transaction_producer.is_some();
         let process_accounts = self.account_producer.is_some();
-        if process_transactions || process_accounts {
+        if process_transactions || process_accounts || process_raw_transactions {
             let workchain_id = block_id.shard_id.workchain_id();
 
             block_extra
@@ -226,10 +226,13 @@ impl TonSubscriber {
                         account_block
                             .transactions()
                             .iterate_slices(|_, raw_transaction| {
-                                records.push(prepare_raw_transaction_record(
+                                let tx = prepare_raw_transaction_record(
                                     &self.compressor,
                                     raw_transaction,
-                                )?);
+                                )?;
+                                if let Some(rec) = tx {
+                                    records.push(rec);
+                                }
                                 Ok(true)
                             })?;
                     }
@@ -394,17 +397,22 @@ fn prepare_transaction_record(
 fn prepare_raw_transaction_record(
     compressor: &ZstdWrapper,
     raw_transaction: ton_types::SliceData,
-) -> Result<DbRecord> {
-    log::error!("AAAAAAAAAAAAAAAA");
+) -> Result<Option<DbRecord>> {
     let cell = raw_transaction.reference(0)?;
     let boc = ton_types::serialize_toc(&cell)?;
+    let transaction = ton_block::Transaction::construct_from(&mut cell.into())?;
+    match transaction.description.read_struct()? {
+        TransactionDescr::Ordinary(_) => {}
+        _ => return Ok(None),
+    };
+
+    log::error!("AAAAAAAAAAAAAAAA");
     let boc = compressor.compress_owned(&boc)?;
     let hash = raw_transaction
         .hash(ton_types::DEPTH_SIZE)
         .as_slice()
         .to_vec();
-
-    Ok(DbRecord::RawTransaction(hash, boc))
+    Ok(Some(DbRecord::RawTransaction(hash, boc)))
 }
 
 fn prepare_account_record(account: ton_block::ShardAccount) -> Result<DbRecord> {
