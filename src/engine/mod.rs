@@ -221,6 +221,7 @@ impl TonSubscriber {
                                 Ok(true)
                             })?;
                     }
+
                     if process_raw_transactions {
                         account_block
                             .transactions()
@@ -302,6 +303,7 @@ impl ton_indexer::Subscriber for TonSubscriber {
         block: &BlockStuff,
         block_proof: Option<&BlockProofStuff>,
     ) -> Result<()> {
+        log::info!("Processing archive");
         self.handle_block(block, block_proof, None).await
     }
 }
