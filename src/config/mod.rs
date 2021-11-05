@@ -144,6 +144,7 @@ pub struct KafkaProducerConfig {
     pub attempt_interval_ms: u64,
     #[serde(default)]
     pub security_config: Option<SecurityConfig>,
+    pub partitions_count: Option<i32>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]

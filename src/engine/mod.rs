@@ -406,7 +406,6 @@ fn prepare_raw_transaction_record(
         _ => return Ok(None),
     };
 
-    log::error!("AAAAAAAAAAAAAAAA");
     let boc = compressor.compress_owned(&boc)?;
     let hash = raw_transaction
         .hash(ton_types::DEPTH_SIZE)

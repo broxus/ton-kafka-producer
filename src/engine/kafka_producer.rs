@@ -1,6 +1,6 @@
-use std::time::Duration;
-
 use anyhow::Result;
+use std::convert::TryInto;
+use std::time::Duration;
 
 use crate::config::*;
 
@@ -45,13 +45,20 @@ impl KafkaProducer {
         let interval = Duration::from_millis(self.config.attempt_interval_ms);
 
         loop {
-            let producer_future = self.producer.send(
+            let message = if let Some(ref a) = self.config.partitions_count {
+                let partition = i32::from_be_bytes(key[0..4].try_into()?) % a;
+                rdkafka::producer::FutureRecord::to(&self.config.topic)
+                    .partition(partition)
+                    .key(&key)
+                    .payload(&value)
+                    .headers(headers.clone())
+            } else {
                 rdkafka::producer::FutureRecord::to(&self.config.topic)
                     .key(&key)
                     .payload(&value)
-                    .headers(headers.clone()),
-                rdkafka::util::Timeout::Never,
-            );
+                    .headers(headers.clone())
+            };
+            let producer_future = self.producer.send(message, rdkafka::util::Timeout::Never);
 
             match producer_future.await {
                 Ok(_) => break,
