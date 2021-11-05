@@ -3,15 +3,17 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use ton_indexer::{BlocksGcOptions, BlocksGcType, OldBlocksPolicy};
 
 use self::temp_keys::*;
 
 mod temp_keys;
 
 /// Main application config (full). Used to run relay
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct AppConfig {
     /// serve states
+    #[serde(default)]
     pub rpc_config: Option<StatesConfig>,
     /// TON node settings
     #[serde(default)]
@@ -48,6 +50,8 @@ pub struct NodeConfig {
 
     /// Archives map queue. Default: 16
     pub parallel_archive_downloads: u32,
+
+    pub start_from: Option<u32>,
 }
 
 impl NodeConfig {
@@ -69,6 +73,11 @@ impl NodeConfig {
         // Prepare DB folder
         std::fs::create_dir_all(&self.db_path)?;
 
+        let old_blocks = match self.start_from {
+            None => OldBlocksPolicy::Ignore,
+            Some(a) => OldBlocksPolicy::Sync { from_seqno: a },
+        };
+
         // Done
         Ok(ton_indexer::NodeConfig {
             ip_address: SocketAddrV4::new(ip_address, self.adnl_port),
@@ -77,10 +86,13 @@ impl NodeConfig {
             file_db_path: self.db_path.join("files"),
             // NOTE: State GC is disabled until it is fully tested
             state_gc_options: None,
-            blocks_gc_options: None,
+            blocks_gc_options: Some(BlocksGcOptions {
+                ty: BlocksGcType::BeforePreviousKeyBlock,
+                enable_for_sync: true,
+            }),
             archives_enabled: false,
-            old_blocks_policy: Default::default(),
-            shard_state_cache_enabled: false,
+            old_blocks_policy: old_blocks,
+            shard_state_cache_enabled: true,
             max_db_memory_usage: self.max_db_memory_usage,
             parallel_archive_downloads: self.parallel_archive_downloads,
             adnl_options: Default::default(),
@@ -101,6 +113,7 @@ impl Default for NodeConfig {
             temp_keys_path: "adnl-keys.json".into(),
             max_db_memory_usage: ton_indexer::default_max_db_memory_usage(),
             parallel_archive_downloads: 16,
+            start_from: None,
         }
     }
 }
@@ -190,4 +203,24 @@ fn default_logger_settings() -> serde_yaml::Value {
 enum ConfigError {
     #[error("Failed to find public ip")]
     PublicIpNotFound,
+}
+
+mod test {
+    use crate::config::{
+        AppConfig, KafkaConfig, KafkaProducerConfig, SaslConfig, SecurityConfig, StatesConfig,
+    };
+
+    #[test]
+    fn test() {
+        let mut config = AppConfig::default();
+        config.rpc_config = Some(StatesConfig {
+            address: "0.0.0.0:8081".parse().unwrap(),
+        });
+        config.kafka_settings = KafkaConfig::default();
+        let mut kafka_conf = KafkaProducerConfig::default();
+        kafka_conf.security_config = Some(SecurityConfig::Sasl(SaslConfig::default()));
+        config.kafka_settings.raw_transaction_producer = Some(kafka_conf);
+        let str = serde_yaml::to_string(&config).unwrap();
+        println!("{}", str)
+    }
 }
