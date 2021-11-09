@@ -308,6 +308,26 @@ impl ton_indexer::Subscriber for TonSubscriber {
     ) -> Result<()> {
         self.handle_block(block, block_proof, None).await
     }
+
+    async fn process_full_state(&self, state: &ShardStateStuff) -> Result<()> {
+        if let Some(process_accounts) = &self.account_producer {
+            let tasks = futures::stream::FuturesUnordered::new();
+
+            state.state().read_accounts()?.iterate_objects(|account| {
+                let (key, value) = match prepare_account_record(account)? {
+                    DbRecord::Account(key, value) => (key, value),
+                    _ => return Ok(true),
+                };
+
+                tasks.push(process_accounts.write(key.into_bytes(), value.into_bytes(), None));
+                Ok(true)
+            })?;
+
+            tasks.try_collect().await?;
+        }
+
+        Ok(())
+    }
 }
 
 fn prepare_in_msg_record(in_msg: ton_block::InMsg, block_id: &UInt256) -> Result<DbRecord> {

@@ -1095,9 +1095,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.106"
+version = "0.2.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a60553f9a9e039a333b4e9b20573b9e9b9c0bb3a11e201ccc48ef4283456d673"
+checksum = "fbe5e23404da5b4f555ef85ebed98fb4083e55a00c317800bc2a50ede9f3d219"
 
 [[package]]
 name = "libloading"
@@ -1112,7 +1112,7 @@ dependencies = [
 [[package]]
 name = "librocksdb-sys"
 version = "6.20.3"
-source = "git+https://github.com/broxus/rust-rocksdb.git#42a1c11a2aef024e6c98413d6d37bd0bf60146eb"
+source = "git+https://github.com/Rexagon/rust-rocksdb.git#2c33f4b9d0f6aefb0d2f7781408970d1e20dc80f"
 dependencies = [
  "bindgen",
  "cc",
@@ -1246,8 +1246,7 @@ dependencies = [
 [[package]]
 name = "lru_time_cache"
 version = "0.11.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9106e1d747ffd48e6be5bb2d97fa706ed25b144fbee4d5c02eae110cd8d6badd"
+source = "git+https://github.com/Rexagon/lru_time_cache.git#b24b67a630fd91e62f0dfd84d0bad92495c29d26"
 
 [[package]]
 name = "matches"
@@ -2053,7 +2052,7 @@ dependencies = [
 [[package]]
 name = "rocksdb"
 version = "0.17.0"
-source = "git+https://github.com/broxus/rust-rocksdb.git#42a1c11a2aef024e6c98413d6d37bd0bf60146eb"
+source = "git+https://github.com/Rexagon/rust-rocksdb.git#2c33f4b9d0f6aefb0d2f7781408970d1e20dc80f"
 dependencies = [
  "libc",
  "librocksdb-sys",
@@ -2143,9 +2142,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.68"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f690853975602e1bfe1ccbf50504d67174e3bcf340f23b5ea9992e0587a52d8"
+checksum = "e466864e431129c7e0d3476b92f20458e5879919a0596c6472738d9fa2d342f8"
 dependencies = [
  "indexmap",
  "itoa",
@@ -2402,7 +2401,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#399b759f84635984ff10fa22a143439f0c690b49"
+source = "git+https://github.com/broxus/tiny-adnl#0e9c7c7fe46e807860d91e1f6c1cd64fac2e99bc"
 dependencies = [
  "aes",
  "anyhow",
@@ -2573,7 +2572,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9387541563397554e2948a5a5ec3a1f6ad6435c5"
+source = "git+https://github.com/broxus/ton-indexer.git#f8135c83a0e96e39063de192662cc3e74c92198d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2615,7 +2614,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9387541563397554e2948a5a5ec3a1f6ad6435c5"
+source = "git+https://github.com/broxus/ton-indexer.git#f8135c83a0e96e39063de192662cc3e74c92198d"
 dependencies = [
  "errno",
  "log",
@@ -2626,7 +2625,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-profile"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9387541563397554e2948a5a5ec3a1f6ad6435c5"
+source = "git+https://github.com/broxus/ton-indexer.git#f8135c83a0e96e39063de192662cc3e74c92198d"
 dependencies = [
  "bincode",
  "crossbeam-channel",
