@@ -64,7 +64,15 @@ async fn state_receiver(
             "No state found".to_string(),
             StatusCode::NO_CONTENT,
         ))),
-        Some(a) => Ok(Box::new(a)),
+
+        Some(a) => {
+            let body = http::response::Builder::new()
+                .status(200)
+                .header("Content-Type", "application/octet-stream")
+                .body(a)
+                .unwrap();
+            Ok(Box::new(body))
+        }
     }
 }
 

@@ -2585,6 +2585,7 @@ dependencies = [
  "config",
  "futures",
  "hex",
+ "http",
  "log",
  "log4rs",
  "nekoton",

@@ -39,7 +39,7 @@ ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 nekoton-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
-
+http = "0.2.5"
 tiny-adnl = { git = "https://github.com/broxus/tiny-adnl" }
 
 # Indexer engine
