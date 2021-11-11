@@ -102,7 +102,7 @@ impl TonSubscriber {
             }
         };
 
-        let futures = futures::stream::FuturesUnordered::new();
+        let mut futures = Vec::with_capacity(records.len());
 
         for record in records {
             match record {
@@ -150,7 +150,11 @@ impl TonSubscriber {
             .handle_block(block_stuff, shard_state)
             .await?;
 
-        futures.try_collect::<Vec<_>>().await?;
+        futures::future::join_all(futures)
+            .await
+            .into_iter()
+            .find(|r| r.is_err())
+            .unwrap_or(Ok(()))?;
 
         Ok(())
     }
