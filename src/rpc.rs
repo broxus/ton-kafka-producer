@@ -51,7 +51,7 @@ async fn state_receiver(
         }
     };
     let state = match ctx.get_contract_state(&account_id) {
-        Ok(a) => a.map(|x| bincode::serialize(&x).trust_me()),
+        Ok(a) => a.map(|x| serde_json::to_value(x).trust_me()),
         Err(e) => {
             return Ok(Box::new(reply::with_status(
                 e.context("Failed getting shard account:").to_string(),
@@ -65,14 +65,7 @@ async fn state_receiver(
             StatusCode::NO_CONTENT,
         ))),
 
-        Some(a) => {
-            let body = http::response::Builder::new()
-                .status(200)
-                .header("Content-Type", "application/octet-stream")
-                .body(a)
-                .unwrap();
-            Ok(Box::new(body))
-        }
+        Some(a) => Ok(Box::new(warp::reply::json(&a))),
     }
 }
 
