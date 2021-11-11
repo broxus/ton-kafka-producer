@@ -30,6 +30,7 @@ async fn state_receiver(
     ctx: Arc<ShardAccountsSubscriber>,
     data: StateReceiveRequest,
 ) -> Result<Box<dyn Reply>, Infallible> {
+    log::info!("Got {} request", data.account_id);
     fn inner(data: StateReceiveRequest) -> Result<UInt256> {
         let id = hex::decode(&data.account_id).context("Bad data for id:")?;
         anyhow::ensure!(

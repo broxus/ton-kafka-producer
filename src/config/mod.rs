@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use ton_indexer::{BlocksGcKind, BlocksGcOptions, OldBlocksPolicy, ShardStateCacheOptions};
+use ton_indexer::{OldBlocksPolicy, ShardStateCacheOptions};
 
 use self::temp_keys::*;
 
@@ -86,10 +86,7 @@ impl NodeConfig {
             file_db_path: self.db_path.join("files"),
             // NOTE: State GC is disabled until it is fully tested
             state_gc_options: None,
-            blocks_gc_options: Some(BlocksGcOptions {
-                kind: BlocksGcKind::BeforePreviousKeyBlock,
-                enable_for_sync: true,
-            }),
+            blocks_gc_options: None,
             shard_state_cache_options: Some(ShardStateCacheOptions::default()),
             archives_enabled: false,
             old_blocks_policy: old_blocks,
