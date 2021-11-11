@@ -2502,7 +2502,7 @@ dependencies = [
 [[package]]
 name = "ton-block-compressor"
 version = "0.1.0"
-source = "git+ssh://git@gitlab.dexpa.io/beton/ton-block-compressor.git#1474a3158b454fb2964c6ad2e25f2a8166f9a4d5"
+source = "git+https://github.com/broxus/ton-block-compressor#1474a3158b454fb2964c6ad2e25f2a8166f9a4d5"
 dependencies = [
  "anyhow",
  "zstd",

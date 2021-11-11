@@ -25,16 +25,15 @@ serde_json = "1.0"
 serde_yaml = "0.8"
 thiserror = "1.0"
 tokio = { version = "1.6", features = ["sync", "fs", "rt-multi-thread", "macros"] }
-ton-block-compressor = { git = "ssh://git@gitlab.dexpa.io/beton/ton-block-compressor.git" }
 warp = "0.3.1"
 parking_lot = "0.11.2"
 rustc-hash = "1.1.0"
-
 
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }
 ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
+ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor" }
 
 nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 nekoton-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
