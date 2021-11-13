@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use anyhow::Result;
+use ton_types::UInt256;
 
 use crate::config::*;
 
@@ -35,7 +36,13 @@ impl KafkaProducer {
         Ok(Self { config, producer })
     }
 
-    pub async fn write(&self, key: Vec<u8>, value: Vec<u8>, timestamp: Option<i64>) -> Result<()> {
+    pub async fn write(
+        &self,
+        partition: i32,
+        key: UInt256,
+        value: Vec<u8>,
+        timestamp: Option<i64>,
+    ) -> Result<()> {
         const HEADER_NAME: &str = "raw_block_timestamp";
 
         let header_value = timestamp.unwrap_or_default().to_be_bytes();
@@ -46,7 +53,8 @@ impl KafkaProducer {
         loop {
             let producer_future = self.producer.send(
                 rdkafka::producer::FutureRecord::to(&self.config.topic)
-                    .key(&key)
+                    .partition(partition)
+                    .key(key.as_slice())
                     .payload(&value)
                     .headers(headers.clone()),
                 rdkafka::util::Timeout::Never,

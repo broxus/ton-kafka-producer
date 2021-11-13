@@ -123,13 +123,7 @@ pub struct StatesConfig {
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct KafkaConfig {
-    pub block_producer: Option<KafkaProducerConfig>,
-    pub raw_block_producer: Option<KafkaProducerConfig>,
-    pub raw_transaction_producer: Option<KafkaProducerConfig>,
-    pub message_producer: Option<KafkaProducerConfig>,
-    pub transaction_producer: Option<KafkaProducerConfig>,
-    pub account_producer: Option<KafkaProducerConfig>,
-    pub block_proof_producer: Option<KafkaProducerConfig>,
+    pub raw_transaction_producer: KafkaProducerConfig,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
@@ -217,7 +211,7 @@ mod test {
         config.kafka_settings = KafkaConfig::default();
         let mut kafka_conf = KafkaProducerConfig::default();
         kafka_conf.security_config = Some(SecurityConfig::Sasl(SaslConfig::default()));
-        config.kafka_settings.raw_transaction_producer = Some(kafka_conf);
+        config.kafka_settings.raw_transaction_producer = kafka_conf;
         let str = serde_yaml::to_string(&config).unwrap();
         println!("{}", str)
     }
