@@ -65,6 +65,7 @@ impl ArchivesScanner {
             .filter_map(|(pat, x)| match parse_archive(x) {
                 Ok(blocks) => {
                     pb.println(format!("Parsed: {}", pat));
+                    pb.inc(1);
                     Some(blocks)
                 }
                 Err(e) => {
@@ -77,8 +78,6 @@ impl ArchivesScanner {
             })
             .flatten()
         {
-            pb.inc(1);
-
             task_counter.fetch_add(1, Ordering::Release);
 
             let partition = compute_partition(&task.0);
