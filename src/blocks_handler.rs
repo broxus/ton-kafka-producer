@@ -25,13 +25,13 @@ impl BlocksHandler {
         block_id: &ton_block::BlockIdExt,
         block: &ton_block::Block,
         ignore_prepare_error: bool,
-    ) -> Result<()> {
+    ) -> Result<Vec<rdkafka::producer::DeliveryFuture>> {
         let records = match self.prepare_records(block) {
-            Ok(records) if records.is_empty() => return Ok(()),
+            Ok(records) if records.is_empty() => return Ok(Vec::new()),
             Ok(records) => records,
             Err(e) if ignore_prepare_error => {
                 log::error!("Failed to process block {}: {:?}", block_id, e);
-                return Ok(());
+                return Ok(Vec::new());
             }
             Err(e) => return Err(e).context("Failed to prepare records"),
         };
@@ -48,11 +48,7 @@ impl BlocksHandler {
             );
         }
 
-        futures::future::join_all(futures)
-            .await
-            .into_iter()
-            .find(|r| r.is_err())
-            .unwrap_or(Ok(()))
+        Ok(futures::future::join_all(futures).await)
     }
 
     fn prepare_records(&self, block: &ton_block::Block) -> Result<Vec<TransactionRecord>> {
