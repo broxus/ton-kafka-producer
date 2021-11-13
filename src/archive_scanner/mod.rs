@@ -83,7 +83,7 @@ impl ArchivesScanner {
                     tx.send(task).await.context("Failed to send task")?;
                 }
                 hash_map::Entry::Vacant(entry) => {
-                    let (tx, rx) = tokio::sync::mpsc::channel(16);
+                    let (tx, rx) = tokio::sync::mpsc::channel(1000);
 
                     let tx = entry.insert(tx);
                     tx.send(task).await.context("Failed to send task")?;
