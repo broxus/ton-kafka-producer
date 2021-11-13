@@ -4,9 +4,10 @@ use anyhow::{Context, Result};
 use argh::FromArgs;
 use serde::Deserialize;
 
+use ton_kafka_producer::archive_scanner::*;
 use ton_kafka_producer::config::*;
-use ton_kafka_producer::engine::shard_accounts_subscriber::ShardAccountsSubscriber;
-use ton_kafka_producer::engine::*;
+use ton_kafka_producer::network_scanner::shard_accounts_subscriber::ShardAccountsSubscriber;
+use ton_kafka_producer::network_scanner::*;
 use ton_kafka_producer::rpc;
 
 #[tokio::main]
@@ -16,31 +17,47 @@ async fn main() -> Result<()> {
 
 async fn run(app: App) -> Result<()> {
     let config: AppConfig = read_config(app.config)?;
-    let _global_config = ton_indexer::GlobalConfig::from_file(&app.global_config)
-        .context("Failed to open global config")?;
 
-    init_logger(&config.logger_settings).context("Failed to init logger")?;
+    match config.scan_type {
+        ScanType::FromNetwork { node_config } => {
+            let global_config = ton_indexer::GlobalConfig::from_file(
+                &app.global_config.context("Global config not found")?,
+            )
+            .context("Failed to open global config")?;
 
-    log::info!("Initializing producer...");
+            init_logger(&config.logger_settings).context("Failed to init logger")?;
 
-    let shard_accounts_subscriber = Arc::new(ShardAccountsSubscriber::default());
+            log::info!("Initializing producer...");
 
-    let engine = Engine::new(
-        config.clone(),
-        _global_config,
-        shard_accounts_subscriber.clone(),
-    )
-    .await
-    .context("Failed to create engine")?;
+            let shard_accounts_subscriber = Arc::new(ShardAccountsSubscriber::default());
 
-    engine.start().await.context("Failed to start engine")?;
+            let engine = NetworkScanner::new(
+                config.kafka_settings,
+                node_config,
+                global_config,
+                shard_accounts_subscriber.clone(),
+            )
+            .await
+            .context("Failed to create engine")?;
 
-    if let Some(config) = config.rpc_config {
-        rpc::serve(shard_accounts_subscriber, config.address).await;
+            engine.start().await.context("Failed to start engine")?;
+
+            if let Some(config) = config.rpc_config {
+                rpc::serve(shard_accounts_subscriber, config.address).await;
+            }
+
+            log::info!("Initialized producer");
+            futures::future::pending().await
+        }
+        ScanType::FromArchives {
+            list_path,
+            since_timestamp,
+        } => {
+            let scanner = ArchivesScanner::new(config.kafka_settings, list_path, since_timestamp)
+                .context("Failed to create scanner")?;
+            scanner.run().await.context("Failed to scan archives")
+        }
     }
-
-    log::info!("Initialized producer");
-    futures::future::pending().await
 }
 
 #[derive(Debug, PartialEq, FromArgs)]
@@ -52,7 +69,7 @@ struct App {
 
     /// path to global config file
     #[argh(option, short = 'g')]
-    global_config: String,
+    global_config: Option<String>,
 }
 
 fn read_config<P, T>(path: P) -> Result<T>

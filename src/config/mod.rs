@@ -2,7 +2,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use ton_indexer::{OldBlocksPolicy, ShardStateCacheOptions};
 
 use self::temp_keys::*;
@@ -10,14 +10,14 @@ use self::temp_keys::*;
 mod temp_keys;
 
 /// Main application config (full). Used to run relay
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Deserialize, Default)]
 pub struct AppConfig {
     /// serve states
     #[serde(default)]
     pub rpc_config: Option<StatesConfig>,
-    /// TON node settings
-    #[serde(default)]
-    pub node_settings: NodeConfig,
+
+    /// Scan type
+    pub scan_type: ScanType,
 
     /// Kafka topics settings
     pub kafka_settings: KafkaConfig,
@@ -28,8 +28,31 @@ pub struct AppConfig {
     pub logger_settings: serde_yaml::Value,
 }
 
+#[derive(Deserialize)]
+#[serde(tag = "kind")]
+pub enum ScanType {
+    FromNetwork {
+        /// TON node settings
+        #[serde(default)]
+        node_config: NodeConfig,
+    },
+    FromArchives {
+        list_path: PathBuf,
+        #[serde(default)]
+        since_timestamp: Option<u32>,
+    },
+}
+
+impl Default for ScanType {
+    fn default() -> Self {
+        Self::FromNetwork {
+            node_config: Default::default(),
+        }
+    }
+}
+
 /// TON node settings
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Deserialize, Clone)]
 #[serde(default, deny_unknown_fields)]
 pub struct NodeConfig {
     /// Node public ip. Automatically determines if None
@@ -115,18 +138,18 @@ impl Default for NodeConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct StatesConfig {
     pub address: SocketAddr,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Deserialize, Clone)]
 #[serde(default)]
 pub struct KafkaConfig {
     pub raw_transaction_producer: KafkaProducerConfig,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Deserialize, Clone)]
 pub struct KafkaProducerConfig {
     pub topic: String,
     pub brokers: String,
@@ -137,12 +160,12 @@ pub struct KafkaProducerConfig {
     pub security_config: Option<SecurityConfig>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub enum SecurityConfig {
     Sasl(SaslConfig),
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Default, Debug, Clone)]
+#[derive(Deserialize, Default, Debug, Clone)]
 pub struct SaslConfig {
     pub security_protocol: String,
     pub ssl_ca_location: String,
@@ -194,25 +217,4 @@ fn default_logger_settings() -> serde_yaml::Value {
 enum ConfigError {
     #[error("Failed to find public ip")]
     PublicIpNotFound,
-}
-
-#[cfg(test)]
-mod test {
-    use crate::config::{
-        AppConfig, KafkaConfig, KafkaProducerConfig, SaslConfig, SecurityConfig, StatesConfig,
-    };
-
-    #[test]
-    fn test() {
-        let mut config = AppConfig::default();
-        config.rpc_config = Some(StatesConfig {
-            address: "0.0.0.0:8081".parse().unwrap(),
-        });
-        config.kafka_settings = KafkaConfig::default();
-        let mut kafka_conf = KafkaProducerConfig::default();
-        kafka_conf.security_config = Some(SecurityConfig::Sasl(SaslConfig::default()));
-        config.kafka_settings.raw_transaction_producer = kafka_conf;
-        let str = serde_yaml::to_string(&config).unwrap();
-        println!("{}", str)
-    }
 }

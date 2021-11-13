@@ -9,7 +9,7 @@ use ton_types::UInt256;
 use warp::http::StatusCode;
 use warp::{reply, Filter, Reply};
 
-use crate::engine::shard_accounts_subscriber::*;
+use crate::network_scanner::shard_accounts_subscriber::*;
 
 pub async fn serve(subsriber: Arc<ShardAccountsSubscriber>, addr: SocketAddr) {
     let state = warp::any().map(move || subsriber.clone());

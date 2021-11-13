@@ -1,88 +1,44 @@
-use std::sync::Arc;
-
 use anyhow::{Context, Result};
-use ton_block::{Deserializable, HashmapAugType, TransactionDescr};
+use ton_block::{Deserializable, HashmapAugType};
 use ton_block_compressor::ZstdWrapper;
-use ton_indexer::utils::*;
-use ton_indexer::BriefBlockMeta;
+use ton_indexer::utils::BlockIdExtExtension;
 use ton_types::{HashmapType, UInt256};
 
 use crate::config::*;
+use crate::kafka_producer::KafkaProducer;
 
-use self::kafka_producer::*;
-use self::shard_accounts_subscriber::*;
-
-mod kafka_producer;
-pub mod shard_accounts_subscriber;
-
-pub struct Engine {
-    indexer: Arc<ton_indexer::Engine>,
-}
-
-impl Engine {
-    pub async fn new(
-        config: AppConfig,
-        global_config: ton_indexer::GlobalConfig,
-        shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
-    ) -> Result<Arc<Self>> {
-        let subscriber: Arc<dyn ton_indexer::Subscriber> =
-            TonSubscriber::new(config.kafka_settings, shard_accounts_subscriber)?;
-
-        let indexer = ton_indexer::Engine::new(
-            config
-                .node_settings
-                .build_indexer_config()
-                .await
-                .context("Failed to build node config")?,
-            global_config,
-            vec![subscriber],
-        )
-        .await
-        .context("Failed to start TON node")?;
-
-        Ok(Arc::new(Self { indexer }))
-    }
-
-    pub async fn start(self: &Arc<Self>) -> Result<()> {
-        self.indexer.start().await?;
-        Ok(())
-    }
-}
-
-struct TonSubscriber {
+pub struct BlocksHandler {
+    since_timestamp: Option<u32>,
     compressor: ton_block_compressor::ZstdWrapper,
     raw_transaction_producer: KafkaProducer,
-    shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
 }
 
-impl TonSubscriber {
-    fn new(
-        config: KafkaConfig,
-        shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
-    ) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+impl BlocksHandler {
+    pub fn new(config: KafkaConfig, since_timestamp: Option<u32>) -> Result<Self> {
+        Ok(Self {
+            since_timestamp,
             compressor: Default::default(),
             raw_transaction_producer: KafkaProducer::new(config.raw_transaction_producer)?,
-            shard_accounts_subscriber,
-        }))
+        })
     }
-}
 
-impl TonSubscriber {
-    async fn handle_block(
+    pub async fn handle_block(
         &self,
-        block_stuff: &BlockStuff,
-        shard_state: Option<&ShardStateStuff>,
+        block_id: &ton_block::BlockIdExt,
+        block: &ton_block::Block,
+        ignore_prepare_error: bool,
     ) -> Result<()> {
-        let records = match self.prepare_records(block_stuff) {
+        let records = match self.prepare_records(block) {
+            Ok(records) if records.is_empty() => return Ok(()),
             Ok(records) => records,
-            Err(e) => {
-                log::error!("Failed to process block {}: {:?}", block_stuff.id(), e);
+            Err(e) if ignore_prepare_error => {
+                log::error!("Failed to process block {}: {:?}", block_id, e);
                 return Ok(());
             }
+            Err(e) => return Err(e).context("Failed to prepare records"),
         };
 
-        let partition = compute_partition(block_stuff.id());
+        let partition = compute_partition(block_id);
 
         let mut futures = Vec::with_capacity(records.len());
 
@@ -94,21 +50,20 @@ impl TonSubscriber {
             );
         }
 
-        self.shard_accounts_subscriber
-            .handle_block(block_stuff, shard_state)
-            .await?;
-
         futures::future::join_all(futures)
             .await
             .into_iter()
             .find(|r| r.is_err())
-            .unwrap_or(Ok(()))?;
-
-        Ok(())
+            .unwrap_or(Ok(()))
     }
 
-    fn prepare_records(&self, block_stuff: &BlockStuff) -> Result<Vec<TransactionRecord>> {
-        let block = block_stuff.block();
+    fn prepare_records(&self, block: &ton_block::Block) -> Result<Vec<TransactionRecord>> {
+        if let Some(since_timestamp) = self.since_timestamp {
+            let block_info = block.read_info()?;
+            if block_info.gen_utime().0 < since_timestamp {
+                return Ok(Vec::new());
+            }
+        }
 
         let block_extra = block.read_extra()?;
 
@@ -129,39 +84,7 @@ impl TonSubscriber {
                 Ok(true)
             })?;
 
-        // Done
         Ok(records)
-    }
-}
-
-#[async_trait::async_trait]
-impl ton_indexer::Subscriber for TonSubscriber {
-    async fn process_block(
-        &self,
-        _: BriefBlockMeta,
-        block: &BlockStuff,
-        _: Option<&BlockProofStuff>,
-        shard_state: &ShardStateStuff,
-    ) -> Result<()> {
-        self.handle_block(block, Some(shard_state)).await
-    }
-
-    async fn process_archive_block(
-        &self,
-        _: BriefBlockMeta,
-        block: &BlockStuff,
-        _: Option<&BlockProofStuff>,
-    ) -> Result<()> {
-        self.handle_block(block, None).await
-    }
-}
-
-fn compute_partition(block_id: &ton_block::BlockIdExt) -> i32 {
-    if block_id.is_masterchain() {
-        0
-    } else {
-        let first_bits = (block_id.shard_id.shard_prefix_with_tag() & 0xe000000000000000u64) >> 61;
-        1 + first_bits as i32
     }
 }
 
@@ -173,7 +96,7 @@ fn prepare_raw_transaction_record(
     let boc = ton_types::serialize_toc(&cell)?;
     let transaction = ton_block::Transaction::construct_from(&mut cell.into())?;
     match transaction.description.read_struct()? {
-        TransactionDescr::Ordinary(_) => {}
+        ton_block::TransactionDescr::Ordinary(_) => {}
         _ => return Ok(None),
     };
 
@@ -186,6 +109,15 @@ fn prepare_raw_transaction_record(
 struct TransactionRecord {
     key: UInt256,
     value: Vec<u8>,
+}
+
+pub fn compute_partition(block_id: &ton_block::BlockIdExt) -> i32 {
+    if block_id.is_masterchain() {
+        0
+    } else {
+        let first_bits = (block_id.shard_id.shard_prefix_with_tag() & 0xe000000000000000u64) >> 61;
+        1 + first_bits as i32
+    }
 }
 
 #[cfg(test)]
