@@ -15,7 +15,6 @@ impl KafkaProducer {
     pub fn new(config: KafkaProducerConfig) -> Result<Self> {
         let mut client_config = rdkafka::config::ClientConfig::new();
         client_config.set("bootstrap.servers", &config.brokers);
-        client_config.set("buffer.memory", (1024 * 1024 * 1024).to_string());
         client_config.set("batch.size", (128 * 1024 * 1024).to_string());
         client_config.set("linger.ms", 2000.to_string());
         client_config.set("acks", 1.to_string());
