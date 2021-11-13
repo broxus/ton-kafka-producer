@@ -8,15 +8,13 @@ use crate::config::*;
 use crate::kafka_producer::KafkaProducer;
 
 pub struct BlocksHandler {
-    since_timestamp: Option<u32>,
     compressor: ton_block_compressor::ZstdWrapper,
     raw_transaction_producer: KafkaProducer,
 }
 
 impl BlocksHandler {
-    pub fn new(config: KafkaConfig, since_timestamp: Option<u32>) -> Result<Self> {
+    pub fn new(config: KafkaConfig) -> Result<Self> {
         Ok(Self {
-            since_timestamp,
             compressor: Default::default(),
             raw_transaction_producer: KafkaProducer::new(config.raw_transaction_producer)?,
         })
@@ -58,13 +56,6 @@ impl BlocksHandler {
     }
 
     fn prepare_records(&self, block: &ton_block::Block) -> Result<Vec<TransactionRecord>> {
-        if let Some(since_timestamp) = self.since_timestamp {
-            let block_info = block.read_info()?;
-            if block_info.gen_utime().0 < since_timestamp {
-                return Ok(Vec::new());
-            }
-        }
-
         let block_extra = block.read_extra()?;
 
         let mut records = Vec::new();

@@ -49,11 +49,8 @@ async fn run(app: App) -> Result<()> {
             log::info!("Initialized producer");
             futures::future::pending().await
         }
-        ScanType::FromArchives {
-            list_path,
-            since_timestamp,
-        } => {
-            let scanner = ArchivesScanner::new(config.kafka_settings, list_path, since_timestamp)
+        ScanType::FromArchives { list_path } => {
+            let scanner = ArchivesScanner::new(config.kafka_settings, list_path)
                 .context("Failed to create scanner")?;
             scanner.run().await.context("Failed to scan archives")
         }

@@ -19,15 +19,11 @@ pub struct ArchivesScanner {
 }
 
 impl ArchivesScanner {
-    pub fn new(
-        config: KafkaConfig,
-        list_path: PathBuf,
-        since_timestamp: Option<u32>,
-    ) -> Result<Self> {
+    pub fn new(config: KafkaConfig, list_path: PathBuf) -> Result<Self> {
         let list = std::fs::read_to_string(list_path)?;
 
         Ok(Self {
-            handler: Arc::new(BlocksHandler::new(config, since_timestamp)?),
+            handler: Arc::new(BlocksHandler::new(config)?),
             list,
         })
     }

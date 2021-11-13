@@ -38,8 +38,6 @@ pub enum ScanType {
     },
     FromArchives {
         list_path: PathBuf,
-        #[serde(default)]
-        since_timestamp: Option<u32>,
     },
 }
 

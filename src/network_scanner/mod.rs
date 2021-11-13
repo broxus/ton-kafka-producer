@@ -56,7 +56,7 @@ impl TonSubscriber {
         shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
     ) -> Result<Arc<Self>> {
         Ok(Arc::new(Self {
-            handler: BlocksHandler::new(config, None)?,
+            handler: BlocksHandler::new(config)?,
             shard_accounts_subscriber,
         }))
     }
