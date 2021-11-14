@@ -156,6 +156,18 @@ pub struct KafkaProducerConfig {
     pub attempt_interval_ms: u64,
     #[serde(default)]
     pub security_config: Option<SecurityConfig>,
+    #[serde(default = "default_batch_flush_threshold_size")]
+    pub batch_flush_threshold_size: usize,
+    #[serde(default = "default_batch_flush_threshold_ms")]
+    pub batch_flush_threshold_ms: u64,
+}
+
+fn default_batch_flush_threshold_size() -> usize {
+    1000
+}
+
+fn default_batch_flush_threshold_ms() -> u64 {
+    60
 }
 
 #[derive(Deserialize, Debug, Clone)]

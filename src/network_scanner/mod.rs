@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use ton_indexer::utils::*;
 use ton_indexer::BriefBlockMeta;
 
@@ -73,18 +73,10 @@ impl TonSubscriber {
             .await
             .context("Failed to update shard accounts subscriber")?;
 
-        futures::future::join_all(
-            self.handler
-                .handle_block(block_stuff.id(), block_stuff.block(), true)
-                .await
-                .context("Failed to handle block")?,
-        )
-        .await
-        .into_iter()
-        .map(|item| item.map(|_| ()))
-        .find(|r| r.is_err())
-        .unwrap_or(Ok(()))
-        .map_err(|e| anyhow!("Failed to send message to kafka: {}", e))
+        self.handler
+            .handle_block(block_stuff.id(), block_stuff.block(), true)
+            .await
+            .context("Failed to handle block")
     }
 }
 

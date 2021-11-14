@@ -2630,6 +2630,7 @@ dependencies = [
  "bincode",
  "chrono",
  "config",
+ "dashmap",
  "futures",
  "hex",
  "http",

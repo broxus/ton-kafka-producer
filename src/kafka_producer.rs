@@ -1,23 +1,28 @@
-use std::time::Duration;
+use std::collections::VecDeque;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use futures::future::Either;
 use rdkafka::error::{KafkaError, RDKafkaErrorCode};
+use rdkafka::producer::{DeliveryFuture, FutureProducer, FutureRecord};
+use tiny_adnl::utils::*;
+use tokio::sync::Mutex;
 use ton_types::UInt256;
 
 use crate::config::*;
 
 pub struct KafkaProducer {
     config: KafkaProducerConfig,
-    producer: rdkafka::producer::FutureProducer,
+    batch_flush_threshold: Duration,
+    producer: FutureProducer,
+    batches: FxHashMap<i32, Arc<Batch>>,
 }
 
 impl KafkaProducer {
     pub fn new(config: KafkaProducerConfig) -> Result<Self> {
         let mut client_config = rdkafka::config::ClientConfig::new();
         client_config.set("bootstrap.servers", &config.brokers);
-        client_config.set("batch.size", (128 * 1024 * 1024).to_string());
-        client_config.set("linger.ms", 2000.to_string());
-        client_config.set("acks", 1.to_string());
 
         if let Some(message_timeout_ms) = config.message_timeout_ms {
             client_config.set("message.timeout.ms", message_timeout_ms.to_string());
@@ -37,7 +42,16 @@ impl KafkaProducer {
 
         let producer = client_config.create()?;
 
-        Ok(Self { config, producer })
+        let batch_flush_threshold = Duration::from_millis(config.batch_flush_threshold_ms);
+
+        Ok(Self {
+            config,
+            batch_flush_threshold,
+            producer,
+            batches: (0..=8)
+                .map(|partition| (partition, Default::default()))
+                .collect(),
+        })
     }
 
     pub async fn write(
@@ -46,7 +60,123 @@ impl KafkaProducer {
         key: UInt256,
         value: Vec<u8>,
         timestamp: Option<i64>,
-    ) -> rdkafka::producer::DeliveryFuture {
+    ) -> Result<()> {
+        let batch = self
+            .batches
+            .get(&partition)
+            .context("Partition not found")?
+            .clone();
+
+        let mut records = batch.records.lock().await;
+
+        // Check if batch is big enough to check
+        if records.len() > self.config.batch_flush_threshold_size {
+            let now = Instant::now();
+
+            let mut batch_to_retry: Option<Vec<([u8; 32], Vec<u8>)>> = None;
+
+            // Check pending records
+            while let Some(item) = records.front() {
+                // Break if successfully reached recent records
+                if now.saturating_duration_since(item.created_at) < self.batch_flush_threshold {
+                    break;
+                }
+
+                // Pop the oldest item
+                let item = match records.pop_front() {
+                    Some(item) => item,
+                    None => break,
+                };
+                let key = item.key;
+
+                // Check if it was delivered
+                if let Err((e, _)) = item.delivery_future.await.with_context(|| {
+                    format!("Delivery future cancelled for tx {}", hex::encode(key))
+                })? {
+                    log::error!(
+                        "Batch item delivery error tx {}: {:?}. Retrying full batch",
+                        hex::encode(item.key),
+                        e
+                    );
+                } else {
+                    // Continue to next pending record on successful delivery
+                    continue;
+                }
+
+                // Create batch to retry
+                batch_to_retry = Some(
+                    futures::future::join_all(
+                        // Include first failed item
+                        std::iter::once(Either::Left(futures::future::ready((
+                            item.key, item.value,
+                        ))))
+                        .chain(
+                            // Wait all subsequent records and add them despite result
+                            std::mem::take(&mut *records).into_iter().map(|item| {
+                                Either::Right(async move {
+                                    item.delivery_future.await.ok();
+                                    (item.key, item.value)
+                                })
+                            }),
+                        ),
+                    )
+                    .await,
+                );
+            }
+
+            // Write batch
+            if let Some(batch_to_retry) = batch_to_retry {
+                let batch_len = batch_to_retry.len();
+
+                // Send all items sequentially
+                for (key, mut value) in batch_to_retry {
+                    // Repeat as many times
+                    loop {
+                        let now = chrono::Utc::now().timestamp();
+
+                        // Send single record
+                        let record = self.send_record(partition, key, value, Some(now)).await;
+
+                        // Wait until it is delivered
+                        match record.delivery_future.await.with_context(|| {
+                            format!("Delivery future cancelled for tx {}", hex::encode(key))
+                        })? {
+                            // Move to the next item on successful delivery
+                            Ok(_) => break,
+                            // Log error and retry on failure
+                            Err((e, _)) => log::error!(
+                                "Batch item delivery error tx {}: {:?}. Retrying full batch",
+                                hex::encode(key),
+                                e
+                            ),
+                        }
+
+                        // Update value
+                        value = record.value;
+                    }
+                }
+
+                // Done
+                log::info!("Retried batch of {} elements", batch_len);
+            }
+        }
+
+        // Append record to the batch
+        records.push_back(
+            self.send_record(partition, *key.as_slice(), value, timestamp)
+                .await,
+        );
+
+        Ok(())
+    }
+
+    async fn send_record(
+        &self,
+        partition: i32,
+        key: [u8; 32],
+        value: Vec<u8>,
+        timestamp: Option<i64>,
+    ) -> PendingRecord {
         const HEADER_NAME: &str = "raw_block_timestamp";
 
         let header_value = timestamp.unwrap_or_default().to_be_bytes();
@@ -54,15 +184,22 @@ impl KafkaProducer {
 
         let interval = Duration::from_millis(self.config.attempt_interval_ms);
 
-        let mut record = rdkafka::producer::FutureRecord::to(&self.config.topic)
+        let mut record = FutureRecord::to(&self.config.topic)
             .partition(partition)
-            .key(key.as_slice())
+            .key(&key)
             .payload(&value)
             .headers(headers.clone());
 
         loop {
             match self.producer.send_result(record) {
-                Ok(fut) => break fut,
+                Ok(delivery_future) => {
+                    break PendingRecord {
+                        key,
+                        value,
+                        created_at: Instant::now(),
+                        delivery_future,
+                    }
+                }
                 Err((e, sent_record))
                     if e == KafkaError::MessageProduction(RDKafkaErrorCode::QueueFull) =>
                 {
@@ -81,4 +218,16 @@ impl KafkaProducer {
             };
         }
     }
+}
+
+#[derive(Default)]
+struct Batch {
+    records: Mutex<VecDeque<PendingRecord>>,
+}
+
+struct PendingRecord {
+    key: [u8; 32],
+    value: Vec<u8>,
+    created_at: Instant,
+    delivery_future: DeliveryFuture,
 }

@@ -117,39 +117,16 @@ async fn start_writing_blocks(
     handler: Arc<BlocksHandler>,
     mut rx: BlockTaskRx,
 ) {
-    let mut delivery_futures = Vec::new();
-    let wait_futures = |futures: Vec<rdkafka::producer::DeliveryFuture>| async {
-        futures::future::join_all(futures)
-            .await
-            .into_iter()
-            .for_each(|item| {
-                if item.is_err() {
-                    pb.println("Failed to write transaction to kafka");
-                }
-            });
-    };
-
     while let Some((block_id, block)) = rx.recv().await {
-        match handler
+        if let Err(e) = handler
             .handle_block(&block_id, &block, false)
             .await
             .context("Failed to handle block")
         {
-            Ok(futures) => {
-                delivery_futures.extend(futures);
-            }
-            Err(e) => {
-                pb.println(format!("Failed processing block {} : {:?}", block_id, e));
-            }
+            pb.println(format!("Failed processing block {} : {:?}", block_id, e));
         }
         counter.fetch_sub(1, Ordering::Release);
-
-        if delivery_futures.len() > 1024 {
-            wait_futures(std::mem::take(&mut delivery_futures)).await;
-        }
     }
-
-    wait_futures(std::mem::take(&mut delivery_futures)).await;
 
     pb.println(format!("Complete tasks for partition {}", partition));
 }
