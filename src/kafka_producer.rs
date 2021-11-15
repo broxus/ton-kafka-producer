@@ -126,6 +126,12 @@ impl KafkaProducer {
 
             // Write batch
             if let Some(batch_to_retry) = batch_to_retry {
+                log::error!(
+                    "FOUND BATCH TO RETRY: {} items in partition {}",
+                    batch_to_retry.len(),
+                    partition
+                );
+
                 let batch_len = batch_to_retry.len();
 
                 // Send all items sequentially

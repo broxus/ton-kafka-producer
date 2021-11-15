@@ -29,7 +29,7 @@ pub struct AppConfig {
 }
 
 #[derive(Deserialize)]
-#[serde(tag = "kind")]
+#[serde(tag = "kind", deny_unknown_fields)]
 pub enum ScanType {
     FromNetwork {
         /// TON node settings
@@ -163,11 +163,11 @@ pub struct KafkaProducerConfig {
 }
 
 fn default_batch_flush_threshold_size() -> usize {
-    1000
+    2000
 }
 
 fn default_batch_flush_threshold_ms() -> u64 {
-    60
+    200
 }
 
 #[derive(Deserialize, Debug, Clone)]
