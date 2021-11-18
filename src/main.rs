@@ -36,7 +36,12 @@ async fn run(app: App) -> Result<()> {
     engine.start().await.context("Failed to start engine")?;
 
     if let Some(config) = config.rpc_config {
-        rpc::serve(shard_accounts_subscriber, config.address).await;
+        rpc::serve(
+            engine.indexer().clone(),
+            shard_accounts_subscriber,
+            config.address,
+        )
+        .await;
     }
 
     log::info!("Initialized producer");

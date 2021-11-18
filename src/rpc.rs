@@ -1,37 +1,50 @@
 use std::convert::{Infallible, TryInto};
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use nekoton::transport::models::ExistingContract;
+use nekoton_indexer_utils::ExistingContractExt;
 use nekoton_utils::TrustMe;
 use serde::{Deserialize, Serialize};
+use ton_block::HashmapAugType;
 use ton_types::UInt256;
 use warp::http::StatusCode;
 use warp::{reply, Filter, Reply};
 
 use crate::engine::shard_accounts_subscriber::*;
 
-pub async fn serve(subsriber: Arc<ShardAccountsSubscriber>, addr: SocketAddr) {
-    let state = warp::any().map(move || subsriber.clone());
-    let routes = warp::path::path("account")
-        .and(state.clone())
-        .and(warp::post())
-        .and(json_data())
-        .and_then(state_receiver);
+pub async fn serve(
+    engine: Arc<ton_indexer::Engine>,
+    subsriber: Arc<ShardAccountsSubscriber>,
+    addr: SocketAddr,
+) {
+    let state = warp::any().map(move || (engine.clone(), subsriber.clone()));
+
+    let routes = warp::any().and(
+        warp::path!("account")
+            .and(state.clone())
+            .and(warp::post())
+            .and(json_data())
+            .and_then(state_receiver),
+    );
+
     warp::serve(routes).bind(addr).await;
 }
 
 #[derive(Serialize, Deserialize)]
 struct StateReceiveRequest {
     account_id: String,
+    #[serde(default)]
+    block_id: Option<String>,
 }
 
 async fn state_receiver(
-    ctx: Arc<ShardAccountsSubscriber>,
+    (engine, subscriber): (Arc<ton_indexer::Engine>, Arc<ShardAccountsSubscriber>),
     data: StateReceiveRequest,
 ) -> Result<Box<dyn Reply>, Infallible> {
-    log::info!("Got {} request", data.account_id);
-    fn inner(data: StateReceiveRequest) -> Result<UInt256> {
+    fn inner(data: StateReceiveRequest) -> Result<(UInt256, Option<ton_block::BlockIdExt>)> {
         let id = hex::decode(&data.account_id).context("Bad data for id:")?;
         anyhow::ensure!(
             id.len() == 32,
@@ -39,9 +52,18 @@ async fn state_receiver(
             id.len()
         );
         let bytes: [u8; 32] = id.try_into().unwrap();
-        Ok(UInt256::with_array(bytes))
+
+        Ok((
+            UInt256::with_array(bytes),
+            data.block_id
+                .map(|id| ton_block::BlockIdExt::from_str(&id))
+                .transpose()
+                .context("Invalid block id")?,
+        ))
     }
-    let account_id = match inner(data) {
+
+    log::info!("Got {} request", data.account_id);
+    let (account_id, block_id) = match inner(data) {
         Ok(a) => a,
         Err(e) => {
             return Ok(Box::new(reply::with_status(
@@ -50,7 +72,21 @@ async fn state_receiver(
             )))
         }
     };
-    let state = match ctx.get_contract_state(&account_id) {
+
+    let state = match match block_id {
+        Some(block_id) => async {
+            let state = engine.load_state(&block_id).await?;
+            let accounts = state
+                .state()
+                .read_accounts()
+                .context("Failed to read accounts")?;
+            let account = accounts.get(&account_id).context("Failed to get account")?;
+            ExistingContract::from_shard_account_opt(&account)
+        }
+        .await
+        .with_context(|| format!("Failed to get account state for block {:?}", block_id)),
+        None => subscriber.get_contract_state(&account_id),
+    } {
         Ok(a) => a.map(|x| serde_json::to_value(x).trust_me()),
         Err(e) => {
             return Ok(Box::new(reply::with_status(
@@ -59,6 +95,7 @@ async fn state_receiver(
             )));
         }
     };
+
     match state {
         None => Ok(Box::new(reply::with_status(
             "No state found".to_string(),

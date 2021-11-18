@@ -50,6 +50,10 @@ impl Engine {
         self.indexer.start().await?;
         Ok(())
     }
+
+    pub fn indexer(&self) -> &Arc<ton_indexer::Engine> {
+        &self.indexer
+    }
 }
 
 struct TonSubscriber {
