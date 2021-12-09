@@ -1,4 +1,7 @@
+use std::fmt::{Display, Formatter};
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use argh::FromArgs;
@@ -6,6 +9,8 @@ use serde::Deserialize;
 
 use ton_kafka_producer::archive_scanner::*;
 use ton_kafka_producer::config::*;
+use ton_kafka_producer::exporter::{DisplayPrometheusExt, MetricsExporter};
+use ton_kafka_producer::metrics::RpcMetrics;
 use ton_kafka_producer::network_scanner::shard_accounts_subscriber::ShardAccountsSubscriber;
 use ton_kafka_producer::network_scanner::*;
 use ton_kafka_producer::rpc;
@@ -40,11 +45,32 @@ async fn run(app: App) -> Result<()> {
             .await
             .context("Failed to create engine")?;
 
+            let engine_metrics = engine.metrics().clone();
+            let rpc_metrics = RpcMetrics::new();
+
+            let exporter = MetricsExporter::new(config.metrics_path);
+
             engine.start().await.context("Failed to start engine")?;
 
             if let Some(config) = config.rpc_config {
-                rpc::serve(shard_accounts_subscriber, config.address).await;
+                rpc::serve(
+                    shard_accounts_subscriber,
+                    config.address,
+                    rpc_metrics.clone(),
+                )
+                .await;
             }
+            tokio::spawn(async move {
+                let metrics = Metrics {
+                    engine_metrics: &engine_metrics,
+                    rpc_metrics: &rpc_metrics,
+                };
+                loop {
+                    let mut buffer = exporter.acquire_buffer().await;
+                    buffer.write(&metrics);
+                    tokio::time::sleep(Duration::from_secs(10)).await;
+                }
+            });
 
             log::info!("Initialized producer");
             futures::future::pending().await
@@ -54,7 +80,10 @@ async fn run(app: App) -> Result<()> {
                 .context("Failed to create scanner")?;
             scanner.run().await.context("Failed to scan archives")
         }
-    }
+    }?;
+
+    log::info!("Initialized producer");
+    futures::future::pending().await
 }
 
 #[derive(Debug, PartialEq, FromArgs)]
@@ -99,4 +128,36 @@ fn init_logger(config: &serde_yaml::Value) -> Result<()> {
     let config = serde_yaml::from_value(config.clone())?;
     log4rs::config::init_raw_config(config)?;
     Ok(())
+}
+
+struct Metrics<'a> {
+    engine_metrics: &'a ton_indexer::EngineMetrics,
+    rpc_metrics: &'a RpcMetrics,
+}
+
+impl Display for Metrics<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.begin_metric("mc_time_diff")
+            .value(self.engine_metrics.mc_time_diff.load(Ordering::Acquire))?;
+        f.begin_metric("shard_client_time_diff").value(
+            self.engine_metrics
+                .shard_client_time_diff
+                .load(Ordering::Acquire),
+        )?;
+        f.begin_metric("last_mc_block_seqno").value(
+            self.engine_metrics
+                .last_mc_block_seqno
+                .load(Ordering::Acquire),
+        )?;
+        f.begin_metric("last_shard_client_mc_block_seqno").value(
+            self.engine_metrics
+                .last_shard_client_mc_block_seqno
+                .load(Ordering::Acquire),
+        )?;
+
+        let rpc_metrics = self.rpc_metrics.take_metrics();
+        f.begin_metric("requests_processed")
+            .value(rpc_metrics.requests_processed)?;
+        f.begin_metric("rpc").value(rpc_metrics.rps)
+    }
 }

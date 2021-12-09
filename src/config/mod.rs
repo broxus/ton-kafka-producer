@@ -9,12 +9,14 @@ use self::temp_keys::*;
 
 mod temp_keys;
 
-/// Main application config (full). Used to run relay
-#[derive(Deserialize, Default)]
+/// Main application config (full)
+#[derive(Deserialize, Clone)]
 pub struct AppConfig {
     /// serve states
     #[serde(default)]
     pub rpc_config: Option<StatesConfig>,
+    #[serde(default = "default_metrics_path")]
+    pub metrics_path: SocketAddr,
 
     /// Scan type
     pub scan_type: ScanType,
@@ -28,7 +30,11 @@ pub struct AppConfig {
     pub logger_settings: serde_yaml::Value,
 }
 
-#[derive(Deserialize)]
+fn default_metrics_path() -> SocketAddr {
+    "0.0.0.0:12345".parse().unwrap()
+}
+
+#[derive(Deserialize, Clone)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum ScanType {
     FromNetwork {

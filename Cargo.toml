@@ -41,6 +41,8 @@ nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = fa
 nekoton-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 http = "0.2.5"
+hyper = "0.14.15"
+num-traits = "0.2.14"
 tiny-adnl = { git = "https://github.com/broxus/tiny-adnl" }
 
 # Indexer engine

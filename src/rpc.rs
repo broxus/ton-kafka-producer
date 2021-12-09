@@ -9,10 +9,19 @@ use ton_types::UInt256;
 use warp::http::StatusCode;
 use warp::{reply, Filter, Reply};
 
+use crate::metrics::RpcMetrics;
 use crate::network_scanner::shard_accounts_subscriber::*;
 
-pub async fn serve(subsriber: Arc<ShardAccountsSubscriber>, addr: SocketAddr) {
-    let state = warp::any().map(move || subsriber.clone());
+pub async fn serve(
+    subscriber: Arc<ShardAccountsSubscriber>,
+    addr: SocketAddr,
+    metrics: Arc<RpcMetrics>,
+) {
+    let state = Arc::new(State {
+        subscriber,
+        metrics,
+    });
+    let state = warp::any().map(move || state.clone());
     let routes = warp::path::path("account")
         .and(state.clone())
         .and(warp::post())
@@ -26,8 +35,13 @@ struct StateReceiveRequest {
     account_id: String,
 }
 
+struct State {
+    subscriber: Arc<ShardAccountsSubscriber>,
+    metrics: Arc<RpcMetrics>,
+}
+
 async fn state_receiver(
-    ctx: Arc<ShardAccountsSubscriber>,
+    ctx: Arc<State>,
     data: StateReceiveRequest,
 ) -> Result<Box<dyn Reply>, Infallible> {
     log::info!("Got {} request", data.account_id);
@@ -41,6 +55,8 @@ async fn state_receiver(
         let bytes: [u8; 32] = id.try_into().unwrap();
         Ok(UInt256::with_array(bytes))
     }
+    ctx.metrics.processed();
+    log::info!("Got {} request", data.account_id);
     let account_id = match inner(data) {
         Ok(a) => a,
         Err(e) => {
@@ -50,7 +66,7 @@ async fn state_receiver(
             )))
         }
     };
-    let state = match ctx.get_contract_state(&account_id) {
+    let state = match ctx.subscriber.get_contract_state(&account_id) {
         Ok(a) => a.map(|x| serde_json::to_value(x).trust_me()),
         Err(e) => {
             return Ok(Box::new(reply::with_status(

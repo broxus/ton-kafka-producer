@@ -43,6 +43,10 @@ impl NetworkScanner {
         self.indexer.start().await?;
         Ok(())
     }
+
+    pub fn metrics(&self) -> Arc<ton_indexer::EngineMetrics> {
+        self.indexer.metrics().clone()
+    }
 }
 
 struct TonSubscriber {
