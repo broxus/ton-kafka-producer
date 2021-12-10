@@ -45,6 +45,7 @@ async fn state_receiver(
     data: StateReceiveRequest,
 ) -> Result<Box<dyn Reply>, Infallible> {
     log::info!("Got {} request", data.account_id);
+
     fn inner(data: StateReceiveRequest) -> Result<UInt256> {
         let id = hex::decode(&data.account_id).context("Bad data for id:")?;
         anyhow::ensure!(
@@ -55,8 +56,9 @@ async fn state_receiver(
         let bytes: [u8; 32] = id.try_into().unwrap();
         Ok(UInt256::with_array(bytes))
     }
+
     ctx.metrics.processed();
-    log::info!("Got {} request", data.account_id);
+
     let account_id = match inner(data) {
         Ok(a) => a,
         Err(e) => {
@@ -66,6 +68,7 @@ async fn state_receiver(
             )))
         }
     };
+
     let state = match ctx.subscriber.get_contract_state(&account_id) {
         Ok(a) => a.map(|x| serde_json::to_value(x).trust_me()),
         Err(e) => {
@@ -75,13 +78,13 @@ async fn state_receiver(
             )));
         }
     };
+
     match state {
+        Some(a) => Ok(Box::new(warp::reply::json(&a))),
         None => Ok(Box::new(reply::with_status(
             "No state found".to_string(),
             StatusCode::NO_CONTENT,
         ))),
-
-        Some(a) => Ok(Box::new(warp::reply::json(&a))),
     }
 }
 

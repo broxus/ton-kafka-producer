@@ -1,7 +1,6 @@
 pub mod archive_scanner;
 mod blocks_handler;
 pub mod config;
-pub mod exporter;
 pub mod kafka_producer;
 pub mod metrics;
 pub mod network_scanner;

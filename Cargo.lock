@@ -1778,6 +1778,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e2192780e9f8e282049ff9bffcaa28171e1cb0844f49ed5374e518ae6024ec"
 
 [[package]]
+name = "pomfrit"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1818a84b117a80af7c1a8184c0accc387df2634aed680f3237945c65d05e4aa"
+dependencies = [
+ "anyhow",
+ "futures",
+ "hyper",
+ "log",
+ "num-traits",
+ "parking_lot",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2603,6 +2619,7 @@ dependencies = [
  "num-traits",
  "once_cell",
  "parking_lot",
+ "pomfrit",
  "public-ip",
  "rdkafka",
  "regex",

@@ -1,15 +1,14 @@
 use std::fmt::{Display, Formatter};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::{Context, Result};
 use argh::FromArgs;
+use pomfrit::formatter::*;
 use serde::Deserialize;
 
 use ton_kafka_producer::archive_scanner::*;
 use ton_kafka_producer::config::*;
-use ton_kafka_producer::exporter::{DisplayPrometheusExt, MetricsExporter};
 use ton_kafka_producer::metrics::RpcMetrics;
 use ton_kafka_producer::network_scanner::shard_accounts_subscriber::ShardAccountsSubscriber;
 use ton_kafka_producer::network_scanner::*;
@@ -48,29 +47,26 @@ async fn run(app: App) -> Result<()> {
             let engine_metrics = engine.metrics().clone();
             let rpc_metrics = RpcMetrics::new();
 
-            let exporter = MetricsExporter::new(config.metrics_path);
+            let (_exporter, metrics_writer) = pomfrit::create_exporter(Some(pomfrit::Config {
+                listen_address: config.metrics_path,
+                ..Default::default()
+            }))
+            .await?;
+            metrics_writer.spawn({
+                let rpc_metrics = rpc_metrics.clone();
+                move |buf| {
+                    buf.write(Metrics {
+                        engine_metrics: &engine_metrics,
+                        rpc_metrics: &rpc_metrics,
+                    });
+                }
+            });
 
             engine.start().await.context("Failed to start engine")?;
 
             if let Some(config) = config.rpc_config {
-                rpc::serve(
-                    shard_accounts_subscriber,
-                    config.address,
-                    rpc_metrics.clone(),
-                )
-                .await;
+                rpc::serve(shard_accounts_subscriber, config.address, rpc_metrics).await;
             }
-            tokio::spawn(async move {
-                let metrics = Metrics {
-                    engine_metrics: &engine_metrics,
-                    rpc_metrics: &rpc_metrics,
-                };
-                loop {
-                    let mut buffer = exporter.acquire_buffer().await;
-                    buffer.write(&metrics);
-                    tokio::time::sleep(Duration::from_secs(10)).await;
-                }
-            });
 
             log::info!("Initialized producer");
             futures::future::pending().await
@@ -158,6 +154,6 @@ impl Display for Metrics<'_> {
         let rpc_metrics = self.rpc_metrics.take_metrics();
         f.begin_metric("requests_processed")
             .value(rpc_metrics.requests_processed)?;
-        f.begin_metric("rpc").value(rpc_metrics.rps)
+        f.begin_metric("rps").value(rpc_metrics.rps)
     }
 }

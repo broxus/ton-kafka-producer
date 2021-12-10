@@ -15,6 +15,7 @@ pub struct AppConfig {
     /// serve states
     #[serde(default)]
     pub rpc_config: Option<StatesConfig>,
+
     #[serde(default = "default_metrics_path")]
     pub metrics_path: SocketAddr,
 
