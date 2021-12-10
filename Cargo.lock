@@ -1083,9 +1083,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.109"
+version = "0.2.110"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f98a04dce437184842841303488f70d0188c5f51437d2a834dc097eafa909a01"
+checksum = "b58a4469763e4e3a906c4ed786e1c70512d16aa88f84dded826da42640fc6a1c"
 
 [[package]]
 name = "libloading"
@@ -1821,7 +1821,8 @@ dependencies = [
 [[package]]
 name = "profl"
 version = "0.1.1"
-source = "git+https://github.com/broxus/profl.git#3b83849ee48a4da55e202667276fc2fecc9a573d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "545fc8a9b311ec49de643bfc04608d9282618f171c6800e352f26550f417b832"
 dependencies = [
  "bincode",
  "crossbeam-channel",
@@ -2543,7 +2544,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#8099943a73ebf6832a1fac09fdd426226b5fde94"
+source = "git+https://github.com/broxus/ton-indexer.git#a3a103d63b514ec36e0c860919bfadd97675f3b4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2570,6 +2571,7 @@ dependencies = [
  "rlimit",
  "rocksdb",
  "serde",
+ "serde_json",
  "sha2",
  "smallvec",
  "sysinfo",
@@ -2585,7 +2587,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#8099943a73ebf6832a1fac09fdd426226b5fde94"
+source = "git+https://github.com/broxus/ton-indexer.git#a3a103d63b514ec36e0c860919bfadd97675f3b4"
 dependencies = [
  "errno",
  "log",
