@@ -28,15 +28,15 @@ impl ShardAccountsSubscriber {
             None => return Ok(()),
         };
 
+        let block_info = &block_stuff.block().read_info()?;
+        let shard_accounts = shard_state.state().read_accounts()?;
+
         let mut shard_accounts_cache = if block_stuff.id().is_masterchain() {
             self.masterchain_accounts_cache.write()
         } else {
             self.shard_accounts_cache.write()
         };
 
-        let block_info = &block_stuff.block().read_info()?;
-
-        let shard_accounts = shard_state.state().read_accounts()?;
         shard_accounts_cache.insert(*block_info.shard(), shard_accounts);
         if block_info.after_merge() || block_info.after_split() {
             let block_ids = block_info.read_prev_ids()?;

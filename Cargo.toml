@@ -25,6 +25,7 @@ once_cell = "1.8"
 parking_lot = "0.11.2"
 pomfrit = "0.1"
 public-ip = "0.2"
+rand = "0.8"
 rdkafka = { version = "0.26", features = ['sasl', 'ssl-vendored', 'tokio'] }
 regex = "1.5"
 rustc-hash = "1.1.0"

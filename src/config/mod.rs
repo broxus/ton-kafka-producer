@@ -2,6 +2,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use rand::Rng;
 use serde::Deserialize;
 use ton_indexer::{OldBlocksPolicy, ShardStateCacheOptions};
 
@@ -107,9 +108,15 @@ impl NodeConfig {
             adnl_keys,
             rocks_db_path: self.db_path.join("rocksdb"),
             file_db_path: self.db_path.join("files"),
-            // NOTE: State GC is disabled until it is fully tested
-            state_gc_options: None,
-            blocks_gc_options: None,
+            state_gc_options: Some(ton_indexer::StateGcOptions {
+                offset_sec: rand::thread_rng().gen_range(0..3600),
+                interval_sec: 3600,
+            }),
+            blocks_gc_options: Some(ton_indexer::BlocksGcOptions {
+                kind: ton_indexer::BlocksGcKind::BeforePreviousKeyBlock,
+                enable_for_sync: true,
+                ..Default::default()
+            }),
             shard_state_cache_options: Some(ShardStateCacheOptions::default()),
             archives_enabled: false,
             old_blocks_policy: old_blocks,
