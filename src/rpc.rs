@@ -1,11 +1,12 @@
-use std::convert::{Infallible, TryInto};
+use std::convert::Infallible;
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use nekoton_utils::TrustMe;
 use serde::{Deserialize, Serialize};
-use ton_types::UInt256;
+use ton_block::MsgAddressInt;
 use warp::http::StatusCode;
 use warp::{reply, Filter, Reply};
 
@@ -32,7 +33,13 @@ pub async fn serve(
 
 #[derive(Serialize, Deserialize)]
 struct StateReceiveRequest {
+    #[serde(default = "default_wc")]
+    wc: i8,
     account_id: String,
+}
+
+fn default_wc() -> i8 {
+    0
 }
 
 struct State {
@@ -44,32 +51,26 @@ async fn state_receiver(
     ctx: Arc<State>,
     data: StateReceiveRequest,
 ) -> Result<Box<dyn Reply>, Infallible> {
-    log::info!("Got {} request", data.account_id);
-
-    fn inner(data: StateReceiveRequest) -> Result<UInt256> {
-        let id = hex::decode(&data.account_id).context("Bad data for id:")?;
-        anyhow::ensure!(
-            id.len() == 32,
-            "expected account id length 32. Got: {}",
-            id.len()
-        );
-        let bytes: [u8; 32] = id.try_into().unwrap();
-        Ok(UInt256::with_array(bytes))
+    if data.account_id.len() != 32 {
+        return Ok(Box::new(reply::with_status(
+            format!("Expected len 32. Got: {}", data.account_id.len()),
+            StatusCode::BAD_REQUEST,
+        )));
     }
-
-    ctx.metrics.processed();
-
-    let account_id = match inner(data) {
+    let address = match MsgAddressInt::from_str(&format!("{}:{}", data.wc, data.account_id)) {
         Ok(a) => a,
         Err(e) => {
+            log::error!("Bad request: {:?}", e);
             return Ok(Box::new(reply::with_status(
                 e.to_string(),
                 StatusCode::BAD_REQUEST,
-            )))
+            )));
         }
     };
+    log::info!("Got {} request", address);
+    ctx.metrics.processed();
 
-    let state = match ctx.subscriber.get_contract_state(&account_id) {
+    let state = match ctx.subscriber.get_contract_state(&address) {
         Ok(a) => a.map(|x| serde_json::to_value(x).trust_me()),
         Err(e) => {
             return Ok(Box::new(reply::with_status(
