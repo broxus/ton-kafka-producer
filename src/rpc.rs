@@ -1,92 +1,89 @@
-use std::convert::{Infallible, TryInto};
+use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
-use nekoton::transport::models::ExistingContract;
-use nekoton_indexer_utils::ExistingContractExt;
+use anyhow::Result;
 use nekoton_utils::TrustMe;
+use nekoton_utils::*;
 use serde::{Deserialize, Serialize};
-use ton_block::HashmapAugType;
-use ton_types::UInt256;
+use ton_block::MsgAddressInt;
 use warp::http::StatusCode;
 use warp::{reply, Filter, Reply};
 
-use crate::engine::shard_accounts_subscriber::*;
+use crate::metrics::RpcMetrics;
+use crate::network_scanner::shard_accounts_subscriber::*;
 
 pub async fn serve(
-    engine: Arc<ton_indexer::Engine>,
-    subsriber: Arc<ShardAccountsSubscriber>,
+    subscriber: Arc<ShardAccountsSubscriber>,
     addr: SocketAddr,
+    metrics: Arc<RpcMetrics>,
 ) {
-    let state = warp::any().map(move || (engine.clone(), subsriber.clone()));
-
-    let routes = warp::any().and(
-        warp::path!("account")
-            .and(state.clone())
-            .and(warp::post())
-            .and(json_data())
-            .and_then(state_receiver),
-    );
-
+    let state = Arc::new(State {
+        subscriber,
+        metrics,
+    });
+    let state = warp::any().map(move || state.clone());
+    let routes = warp::path::path("account")
+        .and(state.clone())
+        .and(warp::post())
+        .and(json_data())
+        .and_then(state_receiver);
     warp::serve(routes).bind(addr).await;
 }
 
-#[derive(Serialize, Deserialize)]
-struct StateReceiveRequest {
-    account_id: String,
-    #[serde(default)]
-    block_id: Option<String>,
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(untagged)]
+enum StateReceiveRequest {
+    Old {
+        account_id: String,
+    },
+    New {
+        #[serde(with = "serde_address")]
+        address: ton_block::MsgAddressInt,
+    },
+}
+
+impl TryFrom<StateReceiveRequest> for ton_block::MsgAddressInt {
+    type Error = anyhow::Error;
+
+    fn try_from(value: StateReceiveRequest) -> Result<Self, Self::Error> {
+        match value {
+            StateReceiveRequest::Old { account_id } => {
+                if account_id.len() != 64 {
+                    return Err(anyhow::Error::msg("Invalid account id"));
+                }
+                MsgAddressInt::from_str(&format!("0:{}", account_id))
+            }
+            StateReceiveRequest::New { address } => Ok(address),
+        }
+    }
+}
+
+struct State {
+    subscriber: Arc<ShardAccountsSubscriber>,
+    metrics: Arc<RpcMetrics>,
 }
 
 async fn state_receiver(
-    (engine, subscriber): (Arc<ton_indexer::Engine>, Arc<ShardAccountsSubscriber>),
+    ctx: Arc<State>,
     data: StateReceiveRequest,
 ) -> Result<Box<dyn Reply>, Infallible> {
-    fn inner(data: StateReceiveRequest) -> Result<(UInt256, Option<ton_block::BlockIdExt>)> {
-        let id = hex::decode(&data.account_id).context("Bad data for id:")?;
-        anyhow::ensure!(
-            id.len() == 32,
-            "expected account id length 32. Got: {}",
-            id.len()
-        );
-        let bytes: [u8; 32] = id.try_into().unwrap();
-
-        Ok((
-            UInt256::with_array(bytes),
-            data.block_id
-                .map(|id| ton_block::BlockIdExt::from_str(&id))
-                .transpose()
-                .context("Invalid block id")?,
-        ))
-    }
-
-    log::info!("Got {} request", data.account_id);
-    let (account_id, block_id) = match inner(data) {
-        Ok(a) => a,
+    let address = match ton_block::MsgAddressInt::try_from(data) {
+        Ok(address) => address,
         Err(e) => {
+            log::error!("Bad request: {:?}", e);
             return Ok(Box::new(reply::with_status(
                 e.to_string(),
                 StatusCode::BAD_REQUEST,
-            )))
+            )));
         }
     };
 
-    let state = match match block_id {
-        Some(block_id) => async {
-            let state = engine.load_state(&block_id).await?;
-            let accounts = state
-                .state()
-                .read_accounts()
-                .context("Failed to read accounts")?;
-            let account = accounts.get(&account_id).context("Failed to get account")?;
-            ExistingContract::from_shard_account_opt(&account)
-        }
-        .await
-        .with_context(|| format!("Failed to get account state for block {:?}", block_id)),
-        None => subscriber.get_contract_state(&account_id),
-    } {
+    log::info!("Got {} request", address);
+    ctx.metrics.processed();
+
+    let state = match ctx.subscriber.get_contract_state(&address) {
         Ok(a) => a.map(|x| serde_json::to_value(x).trust_me()),
         Err(e) => {
             return Ok(Box::new(reply::with_status(
@@ -97,12 +94,11 @@ async fn state_receiver(
     };
 
     match state {
+        Some(a) => Ok(Box::new(warp::reply::json(&a))),
         None => Ok(Box::new(reply::with_status(
             "No state found".to_string(),
             StatusCode::NO_CONTENT,
         ))),
-
-        Some(a) => Ok(Box::new(warp::reply::json(&a))),
     }
 }
 
@@ -111,4 +107,34 @@ where
     for<'a> T: serde::Deserialize<'a> + Send,
 {
     warp::body::content_length_limit(1024).and(warp::filters::body::json::<T>())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_receive_request_parse() {
+        let target_address = ton_block::MsgAddressInt::default();
+
+        assert_eq!(
+            serde_json::from_str::<StateReceiveRequest>(
+                "{\"account_id\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+            )
+            .unwrap(),
+            StateReceiveRequest::Old {
+                account_id: hex::encode(target_address.address().get_bytestring(0))
+            }
+        );
+
+        assert_eq!(
+            serde_json::from_str::<StateReceiveRequest>(
+                "{\"address\":\"0:0000000000000000000000000000000000000000000000000000000000000000\"}",
+            )
+            .unwrap(),
+            StateReceiveRequest::New {
+                address: target_address
+            }
+        );
+    }
 }

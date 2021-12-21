@@ -1,12 +1,17 @@
+use std::fmt::{Display, Formatter};
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use argh::FromArgs;
+use pomfrit::formatter::*;
 use serde::Deserialize;
 
+use ton_kafka_producer::archive_scanner::*;
 use ton_kafka_producer::config::*;
-use ton_kafka_producer::engine::shard_accounts_subscriber::ShardAccountsSubscriber;
-use ton_kafka_producer::engine::*;
+use ton_kafka_producer::metrics::RpcMetrics;
+use ton_kafka_producer::network_scanner::shard_accounts_subscriber::ShardAccountsSubscriber;
+use ton_kafka_producer::network_scanner::*;
 use ton_kafka_producer::rpc;
 
 #[tokio::main]
@@ -16,33 +21,62 @@ async fn main() -> Result<()> {
 
 async fn run(app: App) -> Result<()> {
     let config: AppConfig = read_config(app.config)?;
-    let _global_config = ton_indexer::GlobalConfig::from_file(&app.global_config)
-        .context("Failed to open global config")?;
 
-    init_logger(&config.logger_settings).context("Failed to init logger")?;
+    match config.scan_type {
+        ScanType::FromNetwork { node_config } => {
+            let global_config = ton_indexer::GlobalConfig::from_file(
+                &app.global_config.context("Global config not found")?,
+            )
+            .context("Failed to open global config")?;
 
-    log::info!("Initializing producer...");
+            init_logger(&config.logger_settings).context("Failed to init logger")?;
 
-    let shard_accounts_subscriber = Arc::new(ShardAccountsSubscriber::default());
+            log::info!("Initializing producer...");
 
-    let engine = Engine::new(
-        config.clone(),
-        _global_config,
-        shard_accounts_subscriber.clone(),
-    )
-    .await
-    .context("Failed to create engine")?;
+            let shard_accounts_subscriber = Arc::new(ShardAccountsSubscriber::default());
 
-    engine.start().await.context("Failed to start engine")?;
+            let engine = NetworkScanner::new(
+                config.kafka_settings,
+                node_config,
+                global_config,
+                shard_accounts_subscriber.clone(),
+            )
+            .await
+            .context("Failed to create engine")?;
 
-    if let Some(config) = config.rpc_config {
-        rpc::serve(
-            engine.indexer().clone(),
-            shard_accounts_subscriber,
-            config.address,
-        )
-        .await;
-    }
+            let engine_metrics = engine.metrics().clone();
+            let rpc_metrics = RpcMetrics::new();
+
+            let (_exporter, metrics_writer) = pomfrit::create_exporter(Some(pomfrit::Config {
+                listen_address: config.metrics_path,
+                ..Default::default()
+            }))
+            .await?;
+            metrics_writer.spawn({
+                let rpc_metrics = rpc_metrics.clone();
+                move |buf| {
+                    buf.write(Metrics {
+                        engine_metrics: &engine_metrics,
+                        rpc_metrics: &rpc_metrics,
+                    });
+                }
+            });
+
+            engine.start().await.context("Failed to start engine")?;
+
+            if let Some(config) = config.rpc_config {
+                rpc::serve(shard_accounts_subscriber, config.address, rpc_metrics).await;
+            }
+
+            log::info!("Initialized producer");
+            futures::future::pending().await
+        }
+        ScanType::FromArchives { list_path } => {
+            let scanner = ArchivesScanner::new(config.kafka_settings, list_path)
+                .context("Failed to create scanner")?;
+            scanner.run().await.context("Failed to scan archives")
+        }
+    }?;
 
     log::info!("Initialized producer");
     futures::future::pending().await
@@ -57,7 +91,7 @@ struct App {
 
     /// path to global config file
     #[argh(option, short = 'g')]
-    global_config: String,
+    global_config: Option<String>,
 }
 
 fn read_config<P, T>(path: P) -> Result<T>
@@ -90,4 +124,36 @@ fn init_logger(config: &serde_yaml::Value) -> Result<()> {
     let config = serde_yaml::from_value(config.clone())?;
     log4rs::config::init_raw_config(config)?;
     Ok(())
+}
+
+struct Metrics<'a> {
+    engine_metrics: &'a ton_indexer::EngineMetrics,
+    rpc_metrics: &'a RpcMetrics,
+}
+
+impl Display for Metrics<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.begin_metric("mc_time_diff")
+            .value(self.engine_metrics.mc_time_diff.load(Ordering::Acquire))?;
+        f.begin_metric("shard_client_time_diff").value(
+            self.engine_metrics
+                .shard_client_time_diff
+                .load(Ordering::Acquire),
+        )?;
+        f.begin_metric("last_mc_block_seqno").value(
+            self.engine_metrics
+                .last_mc_block_seqno
+                .load(Ordering::Acquire),
+        )?;
+        f.begin_metric("last_shard_client_mc_block_seqno").value(
+            self.engine_metrics
+                .last_shard_client_mc_block_seqno
+                .load(Ordering::Acquire),
+        )?;
+
+        let rpc_metrics = self.rpc_metrics.take_metrics();
+        f.begin_metric("requests_processed")
+            .value(rpc_metrics.requests_processed)?;
+        f.begin_metric("rps").value(rpc_metrics.rps)
+    }
 }
