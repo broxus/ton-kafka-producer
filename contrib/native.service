@@ -8,9 +8,9 @@ Type=simple
 Restart=yes
 WorkingDirectory=/etc/ton-kafka-producer
 ExecReload=kill -HUP $MAINPID
-ExecStart=/usr/local/bin/ton-kafka-producer run \
-    --config /etc/everscale-monitoring/config.yaml \
-    --global-config /etc/everscale-monitoring/ton-global.config.json
+ExecStart=/usr/local/bin/ton-kafka-producer \
+    --config /etc/ton-kafka-producer/config.yaml \
+    --global-config /etc/ton-kafka-producer/ton-global.config.json
 
 [Install]
 WantedBy=multi-user.target

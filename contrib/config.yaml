@@ -14,7 +14,7 @@ scan_type:
     # Path to temporary ADNL keys.
     # NOTE: Will be generated if it was not there.
     # Default: "./adnl-keys.json"
-    temp_keys_path: "/etc/everscale-monitoring/adnl-keys.json"
+    temp_keys_path: "/etc/ton-kafka-producer/adnl-keys.json"
 
     # Archives map queue. Default: 16
     parallel_archive_downloads: 32
