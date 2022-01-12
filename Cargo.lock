@@ -335,9 +335,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06ed27e177f16d65f0f0c22a213e17c696ace5dd64b14258b52f9417ccb52db4"
+checksum = "e54ea8bc3fb1ee042f5aace6e3c6e025d3874866da222930f70ce62aceba0bfa"
 dependencies = [
  "cfg-if",
  "crossbeam-utils",
@@ -345,9 +345,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-queue"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b10ddc024425c88c2ad148c1b0fd53f4c6d38db9697c9f1588381212fa657c9"
+checksum = "b979d76c9fcb84dffc80a73f7290da0f83e4c95773494674cb44b76d13a7a110"
 dependencies = [
  "cfg-if",
  "crossbeam-utils",
@@ -355,9 +355,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.5"
+version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d82cfc11ce7f2c3faef78d8a684447b40d503d9681acebed6cb728d45940c4db"
+checksum = "cfcae03edb34f947e64acdb1c33ec169824e20657e9ecb61cef6c8c74dcb8120"
 dependencies = [
  "cfg-if",
  "lazy_static",
@@ -633,6 +633,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a48fe53466ab1f4ea6303bf9d7a0ca8060778590f09fd6c3304cc817aeb9935d"
 
 [[package]]
+name = "fastrand"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "779d043b6a0b90cc4c0ed7ee380a6504394cee7efd7db050e3774eee387324b2"
+dependencies = [
+ "instant",
+]
+
+[[package]]
 name = "fdlimit"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -778,6 +787,19 @@ name = "glob"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
+
+[[package]]
+name = "global-config"
+version = "0.1.0"
+source = "git+https://github.com/broxus/ton-indexer.git#f32102ee2f78b043d53c06b73ef67ec445601b2f"
+dependencies = [
+ "anyhow",
+ "base64",
+ "serde",
+ "serde_json",
+ "ton_api",
+ "ton_block",
+]
 
 [[package]]
 name = "h2"
@@ -1316,7 +1338,7 @@ dependencies = [
 [[package]]
 name = "nekoton"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#1c54cc64a2b4b266a9ba8b677fbf7542bc13bd2a"
+source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1359,7 +1381,7 @@ dependencies = [
 [[package]]
 name = "nekoton-abi"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#1c54cc64a2b4b266a9ba8b677fbf7542bc13bd2a"
+source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
 dependencies = [
  "anyhow",
  "base64",
@@ -1385,7 +1407,7 @@ dependencies = [
 [[package]]
 name = "nekoton-contracts"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#1c54cc64a2b4b266a9ba8b677fbf7542bc13bd2a"
+source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
 dependencies = [
  "once_cell",
  "ton_abi",
@@ -1395,7 +1417,7 @@ dependencies = [
 [[package]]
 name = "nekoton-derive"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#1c54cc64a2b4b266a9ba8b677fbf7542bc13bd2a"
+source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
 dependencies = [
  "either",
  "proc-macro2",
@@ -1406,7 +1428,7 @@ dependencies = [
 [[package]]
 name = "nekoton-indexer-utils"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#1c54cc64a2b4b266a9ba8b677fbf7542bc13bd2a"
+source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
 dependencies = [
  "anyhow",
  "nekoton",
@@ -1423,7 +1445,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#1c54cc64a2b4b266a9ba8b677fbf7542bc13bd2a"
+source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
 dependencies = [
  "anyhow",
  "base64",
@@ -1775,9 +1797,9 @@ checksum = "07e2192780e9f8e282049ff9bffcaa28171e1cb0844f49ed5374e518ae6024ec"
 
 [[package]]
 name = "pomfrit"
-version = "0.1.1"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c542d6b81ec253dce14c9011e22f4fc16b89c4869448fee99100c63a536603cb"
+checksum = "53958db287f1882a41bf75952ce10fd2d68f5c19eb3588d0b6bb347d91da1eb0"
 dependencies = [
  "anyhow",
  "futures",
@@ -2282,13 +2304,13 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.2.0"
+version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dac1c663cfc93810f88aed9b8941d48cabf856a1b111c29a40439018d870eb22"
+checksum = "5cdb1ef4eaeeaddc8fbd371e5017057064af0911902ef36b39801f67cc6d79e4"
 dependencies = [
  "cfg-if",
+ "fastrand",
  "libc",
- "rand",
  "redox_syscall 0.2.10",
  "remove_dir_all",
  "winapi",
@@ -2453,6 +2475,7 @@ dependencies = [
  "memchr",
  "mio",
  "num_cpus",
+ "parking_lot",
  "pin-project-lite",
  "tokio-macros",
  "winapi",
@@ -2538,7 +2561,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#2fa7585a6df904d361ab3c3a3b1811dc9da112eb"
+source = "git+https://github.com/broxus/ton-indexer.git#f32102ee2f78b043d53c06b73ef67ec445601b2f"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2550,12 +2573,12 @@ dependencies = [
  "ed25519-dalek",
  "fdlimit",
  "futures",
+ "global-config",
  "hex",
  "itertools",
  "libc",
  "log",
  "lru_time_cache",
- "nekoton-utils",
  "num-traits",
  "num_cpus",
  "parking_lot",
@@ -2581,7 +2604,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#2fa7585a6df904d361ab3c3a3b1811dc9da112eb"
+source = "git+https://github.com/broxus/ton-indexer.git#f32102ee2f78b043d53c06b73ef67ec445601b2f"
 dependencies = [
  "errno",
  "log",
