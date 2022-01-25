@@ -49,3 +49,6 @@ nekoton-utils = { git = "https://github.com/broxus/nekoton.git", default-feature
 nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
+
+[dev-dependencies]
+cargo-husky = { version = "1", features = ['run-cargo-clippy', "run-cargo-fmt"] }
