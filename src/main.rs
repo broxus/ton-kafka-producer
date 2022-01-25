@@ -37,12 +37,11 @@ async fn run(app: App) -> Result<()> {
             let rpc_metrics = RpcMetrics::new();
 
             if let Some(config) = config.rpc_config {
-                rpc::serve(
+                tokio::spawn(rpc::serve(
                     shard_accounts_subscriber.clone(),
                     config.address,
                     rpc_metrics.clone(),
-                )
-                .await;
+                ));
             }
 
             let engine = NetworkScanner::new(
