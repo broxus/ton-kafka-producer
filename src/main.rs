@@ -139,24 +139,33 @@ impl std::fmt::Display for Metrics<'_> {
         // TON indexer
         let indexer_metrics = self.engine.indexer_metrics();
 
-        f.begin_metric("ton_indexer_mc_time_diff")
-            .value(indexer_metrics.mc_time_diff.load(Ordering::Acquire))?;
-        f.begin_metric("ton_indexer_sc_time_diff").value(
-            indexer_metrics
-                .shard_client_time_diff
-                .load(Ordering::Acquire),
-        )?;
+        let last_mc_utime = indexer_metrics.last_mc_utime.load(Ordering::Acquire);
+        if last_mc_utime > 0 {
+            f.begin_metric("ton_indexer_mc_time_diff")
+                .value(indexer_metrics.mc_time_diff.load(Ordering::Acquire))?;
+            f.begin_metric("ton_indexer_sc_time_diff").value(
+                indexer_metrics
+                    .shard_client_time_diff
+                    .load(Ordering::Acquire),
+            )?;
 
-        f.begin_metric("ton_indexer_last_mc_block_seqno")
-            .value(indexer_metrics.last_mc_block_seqno.load(Ordering::Acquire))?;
-        f.begin_metric("ton_indexer_last_sc_block_seqno").value(
-            indexer_metrics
-                .last_shard_client_mc_block_seqno
-                .load(Ordering::Acquire),
-        )?;
+            f.begin_metric("ton_indexer_last_mc_utime")
+                .value(last_mc_utime)?;
+        }
 
-        f.begin_metric("ton_indexer_last_mc_utime")
-            .value(indexer_metrics.last_mc_utime.load(Ordering::Acquire))?;
+        let last_mc_block_seqno = indexer_metrics.last_mc_block_seqno.load(Ordering::Acquire);
+        if last_mc_block_seqno > 0 {
+            f.begin_metric("ton_indexer_last_mc_block_seqno")
+                .value(last_mc_block_seqno)?;
+        }
+
+        let last_shard_client_mc_block_seqno = indexer_metrics
+            .last_shard_client_mc_block_seqno
+            .load(Ordering::Acquire);
+        if last_shard_client_mc_block_seqno > 0 {
+            f.begin_metric("ton_indexer_last_sc_block_seqno")
+                .value(last_shard_client_mc_block_seqno)?;
+        }
 
         // RPC
 
