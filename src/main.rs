@@ -35,25 +35,35 @@ async fn run(app: App) -> Result<()> {
 
             let shard_accounts_subscriber = Arc::new(ShardAccountsSubscriber::default());
 
+            let rpc_metrics = RpcMetrics::new();
+
+            if let Some(config) = config.rpc_config {
+                rpc::serve(
+                    shard_accounts_subscriber.clone(),
+                    config.address,
+                    rpc_metrics.clone(),
+                )
+                .await;
+            }
+
             let engine = NetworkScanner::new(
                 config.kafka_settings,
                 node_config,
                 global_config,
-                shard_accounts_subscriber.clone(),
+                shard_accounts_subscriber,
             )
             .await
             .context("Failed to create engine")?;
 
             let engine_metrics = engine.metrics().clone();
-            let rpc_metrics = RpcMetrics::new();
-
             let (_exporter, metrics_writer) = pomfrit::create_exporter(Some(pomfrit::Config {
                 listen_address: config.metrics_path,
                 ..Default::default()
             }))
             .await?;
+
             metrics_writer.spawn({
-                let rpc_metrics = rpc_metrics.clone();
+                let rpc_metrics = rpc_metrics;
                 move |buf| {
                     buf.write(Metrics {
                         engine_metrics: &engine_metrics,
@@ -63,10 +73,6 @@ async fn run(app: App) -> Result<()> {
             });
 
             engine.start().await.context("Failed to start engine")?;
-
-            if let Some(config) = config.rpc_config {
-                rpc::serve(shard_accounts_subscriber, config.address, rpc_metrics).await;
-            }
 
             log::info!("Initialized producer");
             futures::future::pending().await
