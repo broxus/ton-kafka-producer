@@ -1,4 +1,3 @@
-use std::fmt::{Display, Formatter};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
@@ -64,10 +63,12 @@ async fn run(app: App) -> Result<()> {
 
             metrics_writer.spawn({
                 let rpc_metrics = rpc_metrics;
+                let metrics_engine = engine.clone();
                 move |buf| {
                     buf.write(Metrics {
                         engine_metrics: &engine_metrics,
                         rpc_metrics: &rpc_metrics,
+                        engine: metrics_engine.clone(),
                     });
                 }
             });
@@ -135,10 +136,11 @@ fn init_logger(config: &serde_yaml::Value) -> Result<()> {
 struct Metrics<'a> {
     engine_metrics: &'a ton_indexer::EngineMetrics,
     rpc_metrics: &'a RpcMetrics,
+    engine: Arc<NetworkScanner>,
 }
 
-impl Display for Metrics<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl std::fmt::Display for Metrics<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.begin_metric("mc_time_diff")
             .value(self.engine_metrics.mc_time_diff.load(Ordering::Acquire))?;
         f.begin_metric("shard_client_time_diff").value(
@@ -160,6 +162,56 @@ impl Display for Metrics<'_> {
         let rpc_metrics = self.rpc_metrics.take_metrics();
         f.begin_metric("requests_processed")
             .value(rpc_metrics.requests_processed)?;
-        f.begin_metric("rps").value(rpc_metrics.rps)
+        f.begin_metric("rps").value(rpc_metrics.rps)?;
+
+        let ton_indexer::alloc::JemallocStats {
+            allocated,
+            active,
+            metadata,
+            resident,
+            mapped,
+            retained,
+            dirty,
+            fragmentation,
+        } = ton_indexer::alloc::fetch_stats().map_err(|e| {
+            log::error!("Failed to fetch allocator stats: {}", e);
+            std::fmt::Error
+        })?;
+
+        f.begin_metric("allocated_bytes").value(allocated)?;
+        f.begin_metric("active_bytes").value(active)?;
+        f.begin_metric("metadata_bytes").value(metadata)?;
+        f.begin_metric("resident_bytes").value(resident)?;
+        f.begin_metric("mapped_bytes").value(mapped)?;
+        f.begin_metric("retained_bytes").value(retained)?;
+        f.begin_metric("dirty_bytes").value(dirty)?;
+        f.begin_metric("fragmentation_bytes").value(fragmentation)?;
+
+        let ton_indexer::RocksdbStats {
+            whole_db_stats,
+            uncompressed_block_cache_usage,
+            uncompressed_block_cache_pined_usage,
+            compressed_block_cache_usage,
+            compressed_block_cache_pined_usage,
+        } = self.engine.db_metrics().map_err(|e| {
+            log::error!("Failed to fetch rocksdb stats: {}", e);
+            std::fmt::Error
+        })?;
+
+        f.begin_metric("uncompressed_block_cache_usage_bytes")
+            .value(uncompressed_block_cache_usage)?;
+        f.begin_metric("uncompressed_block_cache_pined_usage_bytes")
+            .value(uncompressed_block_cache_pined_usage)?;
+        f.begin_metric("compressed_block_cache_usage_bytes")
+            .value(compressed_block_cache_usage)?;
+        f.begin_metric("compressed_block_cache_pined_usage_bytes")
+            .value(compressed_block_cache_pined_usage)?;
+        f.begin_metric("memtable_total_size_bytes")
+            .value(whole_db_stats.mem_table_total)?;
+        f.begin_metric("memtable_unflushed_size_bytes")
+            .value(whole_db_stats.mem_table_unflushed)?;
+        f.begin_metric("memtable_cache_bytes")
+            .value(whole_db_stats.cache_total)?;
+        Ok(())
     }
 }
