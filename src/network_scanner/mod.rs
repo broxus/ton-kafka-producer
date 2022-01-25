@@ -44,8 +44,8 @@ impl NetworkScanner {
         Ok(())
     }
 
-    pub fn metrics(&self) -> Arc<ton_indexer::EngineMetrics> {
-        self.indexer.metrics().clone()
+    pub fn indexer_metrics(&self) -> &ton_indexer::EngineMetrics {
+        self.indexer.metrics()
     }
 
     pub fn db_metrics(&self) -> Result<RocksdbStats> {

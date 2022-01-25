@@ -8,7 +8,6 @@ use serde::Deserialize;
 
 use ton_kafka_producer::archive_scanner::*;
 use ton_kafka_producer::config::*;
-use ton_kafka_producer::metrics::RpcMetrics;
 use ton_kafka_producer::network_scanner::shard_accounts_subscriber::ShardAccountsSubscriber;
 use ton_kafka_producer::network_scanner::*;
 use ton_kafka_producer::rpc;
@@ -34,7 +33,7 @@ async fn run(app: App) -> Result<()> {
 
             let shard_accounts_subscriber = Arc::new(ShardAccountsSubscriber::default());
 
-            let rpc_metrics = RpcMetrics::new();
+            let rpc_metrics = Arc::new(rpc::Metrics::default());
 
             if let Some(config) = config.rpc_config {
                 tokio::spawn(rpc::serve(
@@ -53,7 +52,6 @@ async fn run(app: App) -> Result<()> {
             .await
             .context("Failed to create engine")?;
 
-            let engine_metrics = engine.metrics().clone();
             let (_exporter, metrics_writer) = pomfrit::create_exporter(Some(pomfrit::Config {
                 listen_address: config.metrics_path,
                 ..Default::default()
@@ -62,12 +60,11 @@ async fn run(app: App) -> Result<()> {
 
             metrics_writer.spawn({
                 let rpc_metrics = rpc_metrics;
-                let metrics_engine = engine.clone();
+                let engine = engine.clone();
                 move |buf| {
                     buf.write(Metrics {
-                        engine_metrics: &engine_metrics,
                         rpc_metrics: &rpc_metrics,
-                        engine: metrics_engine.clone(),
+                        engine: &engine,
                     });
                 }
             });
@@ -133,35 +130,42 @@ fn init_logger(config: &serde_yaml::Value) -> Result<()> {
 }
 
 struct Metrics<'a> {
-    engine_metrics: &'a ton_indexer::EngineMetrics,
-    rpc_metrics: &'a RpcMetrics,
-    engine: Arc<NetworkScanner>,
+    rpc_metrics: &'a rpc::Metrics,
+    engine: &'a NetworkScanner,
 }
 
 impl std::fmt::Display for Metrics<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.begin_metric("mc_time_diff")
-            .value(self.engine_metrics.mc_time_diff.load(Ordering::Acquire))?;
-        f.begin_metric("shard_client_time_diff").value(
-            self.engine_metrics
+        // TON indexer
+        let indexer_metrics = self.engine.indexer_metrics();
+
+        f.begin_metric("ton_indexer_mc_time_diff")
+            .value(indexer_metrics.mc_time_diff.load(Ordering::Acquire))?;
+        f.begin_metric("ton_indexer_sc_time_diff").value(
+            indexer_metrics
                 .shard_client_time_diff
                 .load(Ordering::Acquire),
         )?;
-        f.begin_metric("last_mc_block_seqno").value(
-            self.engine_metrics
-                .last_mc_block_seqno
-                .load(Ordering::Acquire),
-        )?;
-        f.begin_metric("last_shard_client_mc_block_seqno").value(
-            self.engine_metrics
+
+        f.begin_metric("ton_indexer_last_mc_block_seqno")
+            .value(indexer_metrics.last_mc_block_seqno.load(Ordering::Acquire))?;
+        f.begin_metric("ton_indexer_last_sc_block_seqno").value(
+            indexer_metrics
                 .last_shard_client_mc_block_seqno
                 .load(Ordering::Acquire),
         )?;
 
-        let rpc_metrics = self.rpc_metrics.take_metrics();
-        f.begin_metric("requests_processed")
-            .value(rpc_metrics.requests_processed)?;
-        f.begin_metric("rps").value(rpc_metrics.rps)?;
+        f.begin_metric("ton_indexer_last_mc_utime")
+            .value(indexer_metrics.last_mc_utime.load(Ordering::Acquire))?;
+
+        // RPC
+
+        f.begin_metric("rpc_requests_processed")
+            .value(self.rpc_metrics.requests_processed.load(Ordering::Acquire))?;
+        f.begin_metric("rpc_errors")
+            .value(self.rpc_metrics.errors.load(Ordering::Acquire))?;
+
+        // jemalloc
 
         let ton_indexer::alloc::JemallocStats {
             allocated,
@@ -177,14 +181,18 @@ impl std::fmt::Display for Metrics<'_> {
             std::fmt::Error
         })?;
 
-        f.begin_metric("allocated_bytes").value(allocated)?;
-        f.begin_metric("active_bytes").value(active)?;
-        f.begin_metric("metadata_bytes").value(metadata)?;
-        f.begin_metric("resident_bytes").value(resident)?;
-        f.begin_metric("mapped_bytes").value(mapped)?;
-        f.begin_metric("retained_bytes").value(retained)?;
-        f.begin_metric("dirty_bytes").value(dirty)?;
-        f.begin_metric("fragmentation_bytes").value(fragmentation)?;
+        f.begin_metric("jemalloc_allocated_bytes")
+            .value(allocated)?;
+        f.begin_metric("jemalloc_active_bytes").value(active)?;
+        f.begin_metric("jemalloc_metadata_bytes").value(metadata)?;
+        f.begin_metric("jemalloc_resident_bytes").value(resident)?;
+        f.begin_metric("jemalloc_mapped_bytes").value(mapped)?;
+        f.begin_metric("jemalloc_retained_bytes").value(retained)?;
+        f.begin_metric("jemalloc_dirty_bytes").value(dirty)?;
+        f.begin_metric("jemalloc_fragmentation_bytes")
+            .value(fragmentation)?;
+
+        // RocksDB
 
         let ton_indexer::RocksdbStats {
             whole_db_stats,
@@ -197,20 +205,21 @@ impl std::fmt::Display for Metrics<'_> {
             std::fmt::Error
         })?;
 
-        f.begin_metric("uncompressed_block_cache_usage_bytes")
+        f.begin_metric("rocksdb_uncompressed_block_cache_usage_bytes")
             .value(uncompressed_block_cache_usage)?;
-        f.begin_metric("uncompressed_block_cache_pined_usage_bytes")
+        f.begin_metric("rocksdb_uncompressed_block_cache_pined_usage_bytes")
             .value(uncompressed_block_cache_pined_usage)?;
-        f.begin_metric("compressed_block_cache_usage_bytes")
+        f.begin_metric("rocksdb_compressed_block_cache_usage_bytes")
             .value(compressed_block_cache_usage)?;
-        f.begin_metric("compressed_block_cache_pined_usage_bytes")
+        f.begin_metric("rocksdb_compressed_block_cache_pined_usage_bytes")
             .value(compressed_block_cache_pined_usage)?;
-        f.begin_metric("memtable_total_size_bytes")
+        f.begin_metric("rocksdb_memtable_total_size_bytes")
             .value(whole_db_stats.mem_table_total)?;
-        f.begin_metric("memtable_unflushed_size_bytes")
+        f.begin_metric("rocksdb_memtable_unflushed_size_bytes")
             .value(whole_db_stats.mem_table_unflushed)?;
-        f.begin_metric("memtable_cache_bytes")
+        f.begin_metric("rocksdb_memtable_cache_bytes")
             .value(whole_db_stats.cache_total)?;
+
         Ok(())
     }
 }
