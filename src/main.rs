@@ -167,6 +167,32 @@ impl std::fmt::Display for Metrics<'_> {
                 .value(last_shard_client_mc_block_seqno)?;
         }
 
+        // TON indexer network
+        let network_metrics = self.engine.network_metrics();
+
+        f.begin_metric("network_adnl_peer_count")
+            .value(network_metrics.adnl.peer_count)?;
+        f.begin_metric("network_adnl_channels_by_id_len")
+            .value(network_metrics.adnl.channels_by_peers_len)?;
+        f.begin_metric("network_adnl_channels_by_peers_len")
+            .value(network_metrics.adnl.channels_by_peers_len)?;
+        f.begin_metric("network_adnl_incoming_transfers_len")
+            .value(network_metrics.adnl.incoming_transfers_len)?;
+        f.begin_metric("network_adnl_query_count")
+            .value(network_metrics.adnl.query_count)?;
+
+        f.begin_metric("network_dht_peers_cache_len")
+            .value(network_metrics.dht.peers_cache_len)?;
+        f.begin_metric("network_dht_bucket_peer_count")
+            .value(network_metrics.dht.bucket_peer_count)?;
+        f.begin_metric("network_dht_storage_len")
+            .value(network_metrics.dht.storage_len)?;
+
+        f.begin_metric("network_rldp_peer_count")
+            .value(network_metrics.rldp.peer_count)?;
+        f.begin_metric("network_rldp_transfers_cache_len")
+            .value(network_metrics.rldp.transfers_cache_len)?;
+
         // RPC
 
         f.begin_metric("rpc_requests_processed")

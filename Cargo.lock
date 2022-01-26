@@ -797,7 +797,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#312add912cc5c0b87d6590b5c9813787cd19bd7e"
+source = "git+https://github.com/broxus/ton-indexer.git#3e75b2b0f5e161489821fb7b4f7c8083a3044a34"
 dependencies = [
  "anyhow",
  "base64",
@@ -2110,9 +2110,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.135"
+version = "1.0.136"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cf9235533494ea2ddcdb794665461814781c53f19d87b76e571a1c35acbad2b"
+checksum = "ce31e24b01e1e524df96f1c2fdd054405f8d7376249a5110886fb4b658484789"
 dependencies = [
  "serde_derive",
 ]
@@ -2129,9 +2129,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.135"
+version = "1.0.136"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dcde03d87d4c973c04be249e7d8f0b35db1c848c487bd43032808e59dd8328d"
+checksum = "08597e7152fcd306f41838ed3e37be9eaeed2b61c42e2117266a554fab4662f9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2414,7 +2414,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#beed3e2be1c2a49be7ce11876b5f805ea3d1b02c"
+source = "git+https://github.com/broxus/tiny-adnl#ad9a020864c76488a33f7118fef766a046d8dd1d"
 dependencies = [
  "aes",
  "anyhow",
@@ -2584,7 +2584,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#312add912cc5c0b87d6590b5c9813787cd19bd7e"
+source = "git+https://github.com/broxus/ton-indexer.git#3e75b2b0f5e161489821fb7b4f7c8083a3044a34"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2627,7 +2627,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#312add912cc5c0b87d6590b5c9813787cd19bd7e"
+source = "git+https://github.com/broxus/ton-indexer.git#3e75b2b0f5e161489821fb7b4f7c8083a3044a34"
 dependencies = [
  "errno",
  "log",

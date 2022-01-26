@@ -48,6 +48,10 @@ impl NetworkScanner {
         self.indexer.metrics()
     }
 
+    pub fn network_metrics(&self) -> ton_indexer::NetworkMetrics {
+        self.indexer.network_metrics()
+    }
+
     pub fn db_metrics(&self) -> Result<RocksdbStats> {
         self.indexer.get_memory_usage_stats()
     }
