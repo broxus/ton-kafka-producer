@@ -48,6 +48,10 @@ impl NetworkScanner {
         self.indexer.metrics()
     }
 
+    pub fn internal_metrics(&self) -> ton_indexer::InternalEngineMetrics {
+        self.indexer.internal_metrics()
+    }
+
     pub fn network_metrics(&self) -> ton_indexer::NetworkMetrics {
         self.indexer.network_metrics()
     }

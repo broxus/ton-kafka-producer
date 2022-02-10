@@ -837,7 +837,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#73302cc2bc28b0b72f786d44076ec4b2268915a9"
+source = "git+https://github.com/broxus/ton-indexer.git#a6ef9c9b6c067d6fc06082f1aa2ab9eb33da7543"
 dependencies = [
  "anyhow",
  "base64",
@@ -1059,9 +1059,9 @@ dependencies = [
 
 [[package]]
 name = "indicatif"
-version = "0.17.0-rc.3"
+version = "0.17.0-rc.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c2d4d3e689aa35a7f1319fb1808365e1574916a765da9fd6a1c26f4fc89a06f"
+checksum = "bcff4a3e20f61e89b1560f96ce23f3943ea58fd71ef8c9c028e56436da02e37b"
 dependencies = [
  "console",
  "number_prefix",
@@ -2679,7 +2679,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#73302cc2bc28b0b72f786d44076ec4b2268915a9"
+source = "git+https://github.com/broxus/ton-indexer.git#a6ef9c9b6c067d6fc06082f1aa2ab9eb33da7543"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2722,7 +2722,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#73302cc2bc28b0b72f786d44076ec4b2268915a9"
+source = "git+https://github.com/broxus/ton-indexer.git#a6ef9c9b6c067d6fc06082f1aa2ab9eb33da7543"
 dependencies = [
  "errno",
  "log",

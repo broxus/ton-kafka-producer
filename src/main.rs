@@ -167,6 +167,20 @@ impl std::fmt::Display for Metrics<'_> {
                 .value(last_shard_client_mc_block_seqno)?;
         }
 
+        // Internal metrics
+        let internal_metrics = self.engine.internal_metrics();
+
+        f.begin_metric("ton_indexer_shard_states_cache_len")
+            .value(internal_metrics.shard_states_cache_len)?;
+        f.begin_metric("ton_indexer_shard_states_operations_len")
+            .value(internal_metrics.shard_states_operations_len)?;
+        f.begin_metric("ton_indexer_block_applying_operations")
+            .value(internal_metrics.block_applying_operations)?;
+        f.begin_metric("ton_indexer_next_block_applying_operations")
+            .value(internal_metrics.next_block_applying_operations)?;
+        f.begin_metric("ton_indexer_download_block_operations")
+            .value(internal_metrics.download_block_operations)?;
+
         // TON indexer network
         let network_metrics = self.engine.network_metrics();
 
