@@ -174,12 +174,12 @@ impl std::fmt::Display for Metrics<'_> {
             .value(internal_metrics.shard_states_cache_len)?;
         f.begin_metric("ton_indexer_shard_states_operations_len")
             .value(internal_metrics.shard_states_operations_len)?;
-        f.begin_metric("ton_indexer_block_applying_operations")
-            .value(internal_metrics.block_applying_operations)?;
-        f.begin_metric("ton_indexer_next_block_applying_operations")
-            .value(internal_metrics.next_block_applying_operations)?;
+        f.begin_metric("ton_indexer_block_applying_operations_len")
+            .value(internal_metrics.block_applying_operations_len)?;
+        f.begin_metric("ton_indexer_next_block_applying_operations_len")
+            .value(internal_metrics.next_block_applying_operations_len)?;
         f.begin_metric("ton_indexer_download_block_operations")
-            .value(internal_metrics.download_block_operations)?;
+            .value(internal_metrics.download_block_operations_len)?;
 
         // TON indexer network
         let network_metrics = self.engine.network_metrics();
@@ -201,6 +201,8 @@ impl std::fmt::Display for Metrics<'_> {
             .value(network_metrics.dht.bucket_peer_count)?;
         f.begin_metric("network_dht_storage_len")
             .value(network_metrics.dht.storage_len)?;
+        f.begin_metric("network_dht_storage_total_size")
+            .value(network_metrics.dht.storage_total_size)?;
 
         f.begin_metric("network_rldp_peer_count")
             .value(network_metrics.rldp.peer_count)?;
