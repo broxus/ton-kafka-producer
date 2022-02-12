@@ -170,8 +170,6 @@ impl std::fmt::Display for Metrics<'_> {
         // Internal metrics
         let internal_metrics = self.engine.internal_metrics();
 
-        f.begin_metric("ton_indexer_shard_states_cache_len")
-            .value(internal_metrics.shard_states_cache_len)?;
         f.begin_metric("ton_indexer_shard_states_operations_len")
             .value(internal_metrics.shard_states_operations_len)?;
         f.begin_metric("ton_indexer_block_applying_operations_len")
