@@ -512,6 +512,7 @@ dependencies = [
  "cfg-if",
  "num_cpus",
  "parking_lot 0.12.0",
+ "serde",
 ]
 
 [[package]]
@@ -858,7 +859,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#5686975af02a7519573dd26039ec2a510febc88e"
+source = "git+https://github.com/broxus/ton-indexer.git#c318c2fe4cd244162aad50fcc15833a1ce82f9e2"
 dependencies = [
  "anyhow",
  "base64",
@@ -2700,13 +2701,14 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#5686975af02a7519573dd26039ec2a510febc88e"
+source = "git+https://github.com/broxus/ton-indexer.git#c318c2fe4cd244162aad50fcc15833a1ce82f9e2"
 dependencies = [
  "anyhow",
  "async-trait",
  "base64",
  "bincode",
  "bytes",
+ "countme",
  "crc",
  "dashmap 5.1.0",
  "ed25519-dalek",
@@ -2743,7 +2745,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#5686975af02a7519573dd26039ec2a510febc88e"
+source = "git+https://github.com/broxus/ton-indexer.git#c318c2fe4cd244162aad50fcc15833a1ce82f9e2"
 dependencies = [
  "errno",
  "log",
