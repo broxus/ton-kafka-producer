@@ -19,6 +19,7 @@ async fn main() -> Result<()> {
 
 async fn run(app: App) -> Result<()> {
     let config: AppConfig = read_config(app.config)?;
+    countme::enable(true);
 
     match config.scan_type {
         ScanType::FromNetwork { node_config } => {
@@ -268,6 +269,23 @@ impl std::fmt::Display for Metrics<'_> {
             .value(whole_db_stats.mem_table_unflushed)?;
         f.begin_metric("rocksdb_memtable_cache_bytes")
             .value(whole_db_stats.cache_total)?;
+
+        let storage_cell = countme::get::<ton_indexer::StorageCell>();
+        let cell = countme::get::<ton_types::Cell>();
+
+        f.begin_metric("object_live")
+            .label("type", "storage_cell")
+            .value(storage_cell.live)?;
+        f.begin_metric("object_max_live")
+            .label("type", "storage_cell")
+            .value(storage_cell.max_live)?;
+
+        f.begin_metric("object_live")
+            .label("type", "cell")
+            .value(cell.live)?;
+        f.begin_metric("object_max_live")
+            .label("type", "cell")
+            .value(cell.max_live)?;
 
         Ok(())
     }
