@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use ton_indexer::utils::*;
-use ton_indexer::{BriefBlockMeta, RocksdbStats};
+use ton_indexer::BriefBlockMeta;
 
 use crate::config::*;
 
@@ -44,20 +44,8 @@ impl NetworkScanner {
         Ok(())
     }
 
-    pub fn indexer_metrics(&self) -> &ton_indexer::EngineMetrics {
-        self.indexer.metrics()
-    }
-
-    pub fn internal_metrics(&self) -> ton_indexer::InternalEngineMetrics {
-        self.indexer.internal_metrics()
-    }
-
-    pub fn network_metrics(&self) -> ton_indexer::NetworkMetrics {
-        self.indexer.network_metrics()
-    }
-
-    pub fn db_metrics(&self) -> Result<RocksdbStats> {
-        self.indexer.get_memory_usage_stats()
+    pub fn indexer(&self) -> &ton_indexer::Engine {
+        self.indexer.as_ref()
     }
 }
 

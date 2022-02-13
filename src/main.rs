@@ -137,8 +137,10 @@ struct Metrics<'a> {
 
 impl std::fmt::Display for Metrics<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let indexer = self.engine.indexer();
+
         // TON indexer
-        let indexer_metrics = self.engine.indexer_metrics();
+        let indexer_metrics = indexer.metrics();
 
         let last_mc_utime = indexer_metrics.last_mc_utime.load(Ordering::Acquire);
         if last_mc_utime > 0 {
@@ -169,7 +171,7 @@ impl std::fmt::Display for Metrics<'_> {
         }
 
         // Internal metrics
-        let internal_metrics = self.engine.internal_metrics();
+        let internal_metrics = indexer.internal_metrics();
 
         f.begin_metric("ton_indexer_shard_states_operations_len")
             .value(internal_metrics.shard_states_operations_len)?;
@@ -181,7 +183,7 @@ impl std::fmt::Display for Metrics<'_> {
             .value(internal_metrics.download_block_operations_len)?;
 
         // TON indexer network
-        let network_metrics = self.engine.network_metrics();
+        let network_metrics = indexer.network_metrics();
 
         f.begin_metric("network_adnl_peer_count")
             .value(network_metrics.adnl.peer_count)?;
@@ -207,6 +209,31 @@ impl std::fmt::Display for Metrics<'_> {
             .value(network_metrics.rldp.peer_count)?;
         f.begin_metric("network_rldp_transfers_cache_len")
             .value(network_metrics.rldp.transfers_cache_len)?;
+
+        for (overlay_id, overlay_metrics) in indexer.network_overlay_metrics() {
+            const OVERLAY_ID: &str = "overlay_id";
+
+            let overlay_id = base64::encode(overlay_id.as_ref());
+
+            f.begin_metric("overlay_owned_broadcasts_len")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.owned_broadcasts_len)?;
+            f.begin_metric("overlay_finished_broadcasts_len")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.finished_broadcasts_len)?;
+            f.begin_metric("overlay_node_count")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.node_count)?;
+            f.begin_metric("overlay_known_peers_len")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.known_peers_len)?;
+            f.begin_metric("overlay_random_peers_len")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.random_peers_len)?;
+            f.begin_metric("overlay_neighbours")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.neighbours)?;
+        }
 
         // RPC
 
@@ -250,7 +277,7 @@ impl std::fmt::Display for Metrics<'_> {
             uncompressed_block_cache_pined_usage,
             compressed_block_cache_usage,
             compressed_block_cache_pined_usage,
-        } = self.engine.db_metrics().map_err(|e| {
+        } = indexer.get_memory_usage_stats().map_err(|e| {
             log::error!("Failed to fetch rocksdb stats: {}", e);
             std::fmt::Error
         })?;

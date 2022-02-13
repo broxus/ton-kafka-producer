@@ -11,7 +11,7 @@ base64 = "0.13"
 bincode = "1.3.3"
 chrono = "0.4"
 config = { version = "0.11", default-features = false, features = ["yaml"] }
-countme = {version ='3.0.0',features =['enable']}
+countme = { version = "3.0.0", features = ["enable"] }
 dashmap = "5.1.0"
 futures = "0.3"
 hex = "0.4"
@@ -27,7 +27,7 @@ parking_lot = "0.12.0"
 pomfrit = "0.1"
 public-ip = "0.2"
 rand = "0.8"
-rdkafka = { version = "0.28.0", features = ['sasl', 'ssl-vendored', 'tokio'] }
+rdkafka = { version = "0.28.0", features = ["sasl", "ssl-vendored", "tokio"] }
 regex = "1.5.4"
 rustc-hash = "1.1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -52,4 +52,4 @@ nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
 
 [dev-dependencies]
-cargo-husky = { version = "1", features = ['run-cargo-clippy', "run-cargo-fmt"] }
+cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }

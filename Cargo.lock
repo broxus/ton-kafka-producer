@@ -859,7 +859,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#c318c2fe4cd244162aad50fcc15833a1ce82f9e2"
+source = "git+https://github.com/broxus/ton-indexer.git#aa668e7169da8a71c0a3e9b1e40c3c721d2e9a10"
 dependencies = [
  "anyhow",
  "base64",
@@ -1318,7 +1318,7 @@ dependencies = [
 [[package]]
 name = "lru_time_cache"
 version = "0.11.11"
-source = "git+https://github.com/Rexagon/lru_time_cache.git#b24b67a630fd91e62f0dfd84d0bad92495c29d26"
+source = "git+https://github.com/Rexagon/lru_time_cache.git#cff1fd8b2c9eaae771e1a77d31fa3b40c8d7dd33"
 
 [[package]]
 name = "matches"
@@ -2531,7 +2531,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#7ab157d2433d66ca1a819c68e226a546c4df3984"
+source = "git+https://github.com/broxus/tiny-adnl#8ed48c317fe7e56deff473909f9dc06414db4be3"
 dependencies = [
  "aes",
  "anyhow",
@@ -2701,7 +2701,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#c318c2fe4cd244162aad50fcc15833a1ce82f9e2"
+source = "git+https://github.com/broxus/ton-indexer.git#aa668e7169da8a71c0a3e9b1e40c3c721d2e9a10"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2745,7 +2745,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#c318c2fe4cd244162aad50fcc15833a1ce82f9e2"
+source = "git+https://github.com/broxus/ton-indexer.git#aa668e7169da8a71c0a3e9b1e40c3c721d2e9a10"
 dependencies = [
  "errno",
  "log",
