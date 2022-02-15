@@ -21,6 +21,7 @@ async fn run(app: App) -> Result<()> {
     let config: AppConfig = read_config(app.config)?;
     countme::enable(true);
 
+    tokio::spawn(memory_profiler());
     match config.scan_type {
         ScanType::FromNetwork { node_config } => {
             let global_config = ton_indexer::GlobalConfig::from_file(
@@ -315,5 +316,35 @@ impl std::fmt::Display for Metrics<'_> {
             .value(cell.max_live)?;
 
         Ok(())
+    }
+}
+
+async fn memory_profiler() {
+    use tokio::signal::unix;
+    use ton_indexer::alloc;
+
+    let signal = unix::SignalKind::user_defined1();
+    let mut stream = unix::signal(signal).expect("failed to create signal stream");
+    let path = std::env::var("MEMORY_PROFILER_PATH").unwrap_or_else(|_| "memory.prof".to_string());
+    let mut is_active = false;
+    while stream.recv().await.is_some() {
+        log::info!("Memory profiler signal received");
+        if !is_active {
+            log::info!("Activating memory profiler");
+            if let Err(e) = alloc::activate_prof() {
+                log::error!("Failed to activate memory profiler: {}", e);
+            }
+        } else {
+            let invocation_time = chrono::Local::now();
+            let path = format!("{}_{}", path, invocation_time.format("%Y-%m-%d_%H-%M-%S"));
+            if let Err(e) = alloc::dump_prof(&path) {
+                log::error!("Failed to dump prof: {:?}", e);
+            }
+            if let Err(e) = alloc::deactivate_prof() {
+                log::error!("Failed to deactivate memory profiler: {}", e);
+            }
+        }
+
+        is_active = !is_active;
     }
 }
