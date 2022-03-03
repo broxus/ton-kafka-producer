@@ -32,12 +32,11 @@ impl ArchivesScanner {
         let len = self.list.lines().count();
 
         let pb = ProgressBar::new(len as u64);
-        pb.set_draw_rate(10);
 
         let total_style = ProgressStyle::default_bar()
             .template(
                 "ETA: {eta_precise} {wide_bar} Archives processed: {percent}%|{pos}/{len} Speed: {per_sec}. {msg}",
-            )
+            )?
             .progress_chars("##-");
         pb.set_style(total_style);
 
