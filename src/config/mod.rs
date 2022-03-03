@@ -7,7 +7,7 @@ use serde::Deserialize;
 use ton_indexer::{OldBlocksPolicy, ShardStateCacheOptions};
 
 /// Main application config (full)
-#[derive(Deserialize, Clone)]
+#[derive(Clone, Deserialize)]
 pub struct AppConfig {
     /// serve states
     #[serde(default)]
@@ -32,7 +32,7 @@ fn default_metrics_path() -> SocketAddr {
     "0.0.0.0:12345".parse().unwrap()
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Clone, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum ScanType {
     FromNetwork {
@@ -54,7 +54,7 @@ impl Default for ScanType {
 }
 
 /// TON node settings
-#[derive(Deserialize, Clone)]
+#[derive(Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct NodeConfig {
     /// Node public ip. Automatically determines if None
@@ -145,18 +145,34 @@ impl Default for NodeConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct StatesConfig {
     pub address: SocketAddr,
 }
 
-#[derive(Debug, Default, Deserialize, Clone)]
-#[serde(default)]
-pub struct KafkaConfig {
-    pub raw_transaction_producer: KafkaProducerConfig,
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "mode", rename_all = "camelCase")]
+pub enum KafkaConfig {
+    Broxus {
+        raw_transaction_producer: KafkaProducerConfig,
+    },
+    Gql(GqlKafkaConfig),
 }
 
-#[derive(Debug, Default, Deserialize, Clone)]
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct GqlKafkaConfig {
+    pub block_producer: Option<KafkaProducerConfig>,
+    pub raw_block_producer: Option<KafkaProducerConfig>,
+    pub raw_transaction_producer: Option<KafkaProducerConfig>,
+    pub message_producer: Option<KafkaProducerConfig>,
+    pub transaction_producer: Option<KafkaProducerConfig>,
+    pub account_producer: Option<KafkaProducerConfig>,
+    pub block_proof_producer: Option<KafkaProducerConfig>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct KafkaProducerConfig {
     pub topic: String,
     pub brokers: String,
@@ -179,12 +195,12 @@ fn default_batch_flush_threshold_ms() -> u64 {
     200
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum SecurityConfig {
     Sasl(SaslConfig),
 }
 
-#[derive(Deserialize, Default, Debug, Clone)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct SaslConfig {
     pub security_protocol: String,
     pub ssl_ca_location: String,

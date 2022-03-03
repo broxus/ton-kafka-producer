@@ -16,11 +16,11 @@ pub struct KafkaProducer {
     config: KafkaProducerConfig,
     batch_flush_threshold: Duration,
     producer: FutureProducer,
-    batches: FxHashMap<i32, Arc<Batch>>,
+    batches: FxHashMap<u32, Arc<Batch>>,
 }
 
 impl KafkaProducer {
-    pub fn new(config: KafkaProducerConfig) -> Result<Self> {
+    pub fn new(config: KafkaProducerConfig, partitions: impl Iterator<Item = u32>) -> Result<Self> {
         let mut client_config = rdkafka::config::ClientConfig::new();
         client_config.set("bootstrap.servers", &config.brokers);
 
@@ -48,7 +48,7 @@ impl KafkaProducer {
             config,
             batch_flush_threshold,
             producer,
-            batches: (0..=8)
+            batches: partitions
                 .map(|partition| (partition, Default::default()))
                 .collect(),
         })
@@ -56,7 +56,7 @@ impl KafkaProducer {
 
     pub async fn write(
         &self,
-        partition: i32,
+        partition: u32,
         key: UInt256,
         value: Vec<u8>,
         timestamp: Option<i64>,
@@ -178,7 +178,7 @@ impl KafkaProducer {
 
     async fn send_record(
         &self,
-        partition: i32,
+        partition: u32,
         key: [u8; 32],
         value: Vec<u8>,
         timestamp: Option<i64>,
@@ -191,7 +191,7 @@ impl KafkaProducer {
         let interval = Duration::from_millis(self.config.attempt_interval_ms);
 
         let mut record = FutureRecord::to(&self.config.topic)
-            .partition(partition)
+            .partition(partition as i32)
             .key(&key)
             .payload(&value)
             .headers(headers.clone());

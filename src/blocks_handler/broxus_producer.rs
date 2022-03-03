@@ -5,18 +5,18 @@ use ton_indexer::utils::BlockIdExtExtension;
 use ton_types::{HashmapType, UInt256};
 
 use crate::config::*;
-use crate::kafka_producer::KafkaProducer;
+use crate::kafka_producer::*;
 
-pub struct BlocksHandler {
+pub struct BroxusProducer {
     compressor: ton_block_compressor::ZstdWrapper,
     raw_transaction_producer: KafkaProducer,
 }
 
-impl BlocksHandler {
-    pub fn new(config: KafkaConfig) -> Result<Self> {
+impl BroxusProducer {
+    pub fn new(config: KafkaProducerConfig) -> Result<Self> {
         Ok(Self {
             compressor: Default::default(),
-            raw_transaction_producer: KafkaProducer::new(config.raw_transaction_producer)?,
+            raw_transaction_producer: KafkaProducer::new(config, 0..=8)?,
         })
     }
 
@@ -103,12 +103,12 @@ struct TransactionRecord {
     value: Vec<u8>,
 }
 
-pub fn compute_partition(block_id: &ton_block::BlockIdExt) -> i32 {
+pub fn compute_partition(block_id: &ton_block::BlockIdExt) -> u32 {
     if block_id.is_masterchain() {
         0
     } else {
         let first_bits = (block_id.shard_id.shard_prefix_with_tag() & 0xe000000000000000u64) >> 61;
-        1 + first_bits as i32
+        1 + first_bits as u32
     }
 }
 

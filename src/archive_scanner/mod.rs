@@ -1,4 +1,3 @@
-use std::collections::{hash_map, HashMap};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -42,7 +41,14 @@ impl ArchivesScanner {
 
         let task_counter = Arc::new(AtomicUsize::new(0));
 
-        let mut partitions = HashMap::<i32, BlockTaskTx>::with_capacity(9);
+        let (tx, rx) = tokio::sync::mpsc::channel(1000);
+
+        tokio::spawn(start_writing_blocks(
+            pb.clone(),
+            task_counter.clone(),
+            self.handler.clone(),
+            rx,
+        ));
 
         for task in self
             .list
@@ -74,31 +80,11 @@ impl ArchivesScanner {
             .flatten()
         {
             task_counter.fetch_add(1, Ordering::Release);
-
-            let partition = compute_partition(&task.0);
-            match partitions.entry(partition) {
-                hash_map::Entry::Occupied(entry) => {
-                    let tx = entry.get();
-                    tx.send(task).await.context("Failed to send task")?;
-                }
-                hash_map::Entry::Vacant(entry) => {
-                    let (tx, rx) = tokio::sync::mpsc::channel(1000);
-
-                    let tx = entry.insert(tx);
-                    tx.send(task).await.context("Failed to send task")?;
-
-                    tokio::spawn(start_writing_blocks(
-                        partition,
-                        pb.clone(),
-                        task_counter.clone(),
-                        self.handler.clone(),
-                        rx,
-                    ));
-                }
-            }
+            tx.send(task).await.context("Failed to send task")?;
         }
 
-        drop(partitions);
+        // Drop tx so tasks writer will stop
+        drop(tx);
 
         while task_counter.load(Ordering::Acquire) > 0 {
             pb.println("Waiting tasks to complete...");
@@ -110,7 +96,6 @@ impl ArchivesScanner {
 }
 
 async fn start_writing_blocks(
-    partition: i32,
     pb: ProgressBar,
     counter: Arc<AtomicUsize>,
     handler: Arc<BlocksHandler>,
@@ -127,9 +112,8 @@ async fn start_writing_blocks(
         counter.fetch_sub(1, Ordering::Release);
     }
 
-    pb.println(format!("Complete tasks for partition {}", partition));
+    pb.println("Complete tasks");
 }
 
-type BlockTaskTx = tokio::sync::mpsc::Sender<BlockTask>;
 type BlockTaskRx = tokio::sync::mpsc::Receiver<BlockTask>;
 type BlockTask = (ton_block::BlockIdExt, ton_block::Block);
