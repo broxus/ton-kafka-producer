@@ -1,13 +1,17 @@
 use anyhow::Result;
+use ton_indexer::utils::*;
 
 use self::broxus_producer::*;
+use self::gql_producer::*;
 use crate::config::*;
 
 mod broxus_producer;
 mod gql_producer;
 
+#[allow(clippy::large_enum_variant)]
 pub enum BlocksHandler {
     Broxus(BroxusProducer),
+    Gql(GqlProducer),
 }
 
 impl BlocksHandler {
@@ -16,20 +20,26 @@ impl BlocksHandler {
             KafkaConfig::Broxus {
                 raw_transaction_producer,
             } => BroxusProducer::new(raw_transaction_producer).map(Self::Broxus),
-            KafkaConfig::Gql(_) => todo!(),
+            KafkaConfig::Gql(config) => GqlProducer::new(config).map(Self::Gql),
         }
     }
 
     pub async fn handle_block(
         &self,
-        block_id: &ton_block::BlockIdExt,
-        block: &ton_block::Block,
+        block_stuff: &BlockStuff,
+        block_proof: Option<&BlockProofStuff>,
+        shard_state: Option<&ShardStateStuff>,
         ignore_prepare_error: bool,
     ) -> Result<()> {
         match self {
             Self::Broxus(producer) => {
                 producer
-                    .handle_block(block_id, block, ignore_prepare_error)
+                    .handle_block(block_stuff.id(), block_stuff.block(), ignore_prepare_error)
+                    .await
+            }
+            Self::Gql(producer) => {
+                producer
+                    .handle_block(block_stuff, block_proof, shard_state)
                     .await
             }
         }

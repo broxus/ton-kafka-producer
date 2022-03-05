@@ -165,7 +165,6 @@ pub enum KafkaConfig {
 pub struct GqlKafkaConfig {
     pub block_producer: Option<KafkaProducerConfig>,
     pub raw_block_producer: Option<KafkaProducerConfig>,
-    pub raw_transaction_producer: Option<KafkaProducerConfig>,
     pub message_producer: Option<KafkaProducerConfig>,
     pub transaction_producer: Option<KafkaProducerConfig>,
     pub account_producer: Option<KafkaProducerConfig>,

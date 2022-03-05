@@ -16,7 +16,7 @@ impl BroxusProducer {
     pub fn new(config: KafkaProducerConfig) -> Result<Self> {
         Ok(Self {
             compressor: Default::default(),
-            raw_transaction_producer: KafkaProducer::new(config, 0..=8)?,
+            raw_transaction_producer: KafkaProducer::new(config, Partitions::Fixed(0..=8))?,
         })
     }
 
@@ -42,10 +42,12 @@ impl BroxusProducer {
 
         let now = chrono::Utc::now().timestamp();
         for TransactionRecord { key, value } in records {
-            futures.push(
-                self.raw_transaction_producer
-                    .write(partition, key, value, Some(now)),
-            );
+            futures.push(self.raw_transaction_producer.write(
+                partition,
+                key.into_vec(),
+                value,
+                Some(now),
+            ));
         }
 
         futures::future::join_all(futures)
@@ -103,12 +105,12 @@ struct TransactionRecord {
     value: Vec<u8>,
 }
 
-pub fn compute_partition(block_id: &ton_block::BlockIdExt) -> u32 {
+pub fn compute_partition(block_id: &ton_block::BlockIdExt) -> i32 {
     if block_id.is_masterchain() {
         0
     } else {
         let first_bits = (block_id.shard_id.shard_prefix_with_tag() & 0xe000000000000000u64) >> 61;
-        1 + first_bits as u32
+        1 + first_bits as i32
     }
 }
 

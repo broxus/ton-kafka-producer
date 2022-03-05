@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
+use ton_indexer::utils::*;
 
 use self::archive::*;
 use crate::blocks_handler::*;
@@ -103,7 +104,7 @@ async fn start_writing_blocks(
 ) {
     while let Some((block_id, block)) = rx.recv().await {
         if let Err(e) = handler
-            .handle_block(&block_id, &block, false)
+            .handle_block(&block, None, None, false)
             .await
             .context("Failed to handle block")
         {
@@ -116,4 +117,4 @@ async fn start_writing_blocks(
 }
 
 type BlockTaskRx = tokio::sync::mpsc::Receiver<BlockTask>;
-type BlockTask = (ton_block::BlockIdExt, ton_block::Block);
+type BlockTask = (ton_block::BlockIdExt, BlockStuff);

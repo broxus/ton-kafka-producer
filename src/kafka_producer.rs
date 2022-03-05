@@ -8,7 +8,6 @@ use rdkafka::error::{KafkaError, RDKafkaErrorCode};
 use rdkafka::producer::{DeliveryFuture, FutureProducer, FutureRecord};
 use tiny_adnl::utils::*;
 use tokio::sync::Mutex;
-use ton_types::UInt256;
 
 use crate::config::*;
 
@@ -16,11 +15,26 @@ pub struct KafkaProducer {
     config: KafkaProducerConfig,
     batch_flush_threshold: Duration,
     producer: FutureProducer,
-    batches: FxHashMap<u32, Arc<Batch>>,
+    batches: FxDashMap<i32, Arc<Batch>>,
+    fixed_partitions: bool,
+}
+
+pub enum Partitions<T> {
+    Fixed(T),
+    Any,
+}
+
+impl Partitions<std::iter::Empty<i32>> {
+    pub fn any() -> Self {
+        Self::Any
+    }
 }
 
 impl KafkaProducer {
-    pub fn new(config: KafkaProducerConfig, partitions: impl Iterator<Item = u32>) -> Result<Self> {
+    pub fn new(
+        config: KafkaProducerConfig,
+        partitions: Partitions<impl Iterator<Item = i32>>,
+    ) -> Result<Self> {
         let mut client_config = rdkafka::config::ClientConfig::new();
         client_config.set("bootstrap.servers", &config.brokers);
 
@@ -44,28 +58,40 @@ impl KafkaProducer {
 
         let batch_flush_threshold = Duration::from_millis(config.batch_flush_threshold_ms);
 
+        let (batches, fixed_partitions) = match partitions {
+            Partitions::Fixed(partitions) => (
+                partitions
+                    .map(|partition| (partition, Default::default()))
+                    .collect(),
+                true,
+            ),
+            Partitions::Any => (Default::default(), false),
+        };
+
         Ok(Self {
             config,
             batch_flush_threshold,
             producer,
-            batches: partitions
-                .map(|partition| (partition, Default::default()))
-                .collect(),
+            batches,
+            fixed_partitions,
         })
     }
 
     pub async fn write(
         &self,
-        partition: u32,
-        key: UInt256,
+        partition: i32,
+        key: Vec<u8>,
         value: Vec<u8>,
         timestamp: Option<i64>,
     ) -> Result<()> {
-        let batch = self
-            .batches
-            .get(&partition)
-            .context("Partition not found")?
-            .clone();
+        let batch = if self.fixed_partitions {
+            self.batches
+                .get(&partition)
+                .context("Partition not found")?
+                .clone()
+        } else {
+            self.batches.entry(partition).or_default().clone()
+        };
 
         let mut records = batch.records.lock().await;
 
@@ -73,7 +99,7 @@ impl KafkaProducer {
         if records.len() > self.config.batch_flush_threshold_size {
             let now = Instant::now();
 
-            let mut batch_to_retry: Option<Vec<([u8; 32], Vec<u8>)>> = None;
+            let mut batch_to_retry: Option<Vec<(Vec<u8>, Vec<u8>)>> = None;
 
             // Check pending records
             while let Some(item) = records.front() {
@@ -87,15 +113,17 @@ impl KafkaProducer {
                     Some(item) => item,
                     None => break,
                 };
-                let key = item.key;
 
                 // Check if it was delivered
                 if let Err((e, _)) = item.delivery_future.await.with_context(|| {
-                    format!("Delivery future cancelled for tx {}", hex::encode(key))
+                    format!(
+                        "Delivery future cancelled for tx {}",
+                        hex::encode(&item.key)
+                    )
                 })? {
                     log::error!(
                         "Batch item delivery error tx {}: {:?}. Retrying full batch",
-                        hex::encode(item.key),
+                        hex::encode(&item.key),
                         e
                     );
                 } else {
@@ -135,7 +163,7 @@ impl KafkaProducer {
                 let batch_len = batch_to_retry.len();
 
                 // Send all items sequentially
-                for (key, mut value) in batch_to_retry {
+                for (mut key, mut value) in batch_to_retry {
                     // Repeat as many times
                     loop {
                         let now = chrono::Utc::now().timestamp();
@@ -145,19 +173,23 @@ impl KafkaProducer {
 
                         // Wait until it is delivered
                         match record.delivery_future.await.with_context(|| {
-                            format!("Delivery future cancelled for tx {}", hex::encode(key))
+                            format!(
+                                "Delivery future cancelled for tx {}",
+                                hex::encode(&record.key)
+                            )
                         })? {
                             // Move to the next item on successful delivery
                             Ok(_) => break,
                             // Log error and retry on failure
                             Err((e, _)) => log::error!(
                                 "Batch item delivery error tx {}: {:?}. Retrying full batch",
-                                hex::encode(key),
+                                hex::encode(&record.key),
                                 e
                             ),
                         }
 
-                        // Update value
+                        // Update key and value
+                        key = record.key;
                         value = record.value;
                     }
                 }
@@ -168,18 +200,15 @@ impl KafkaProducer {
         }
 
         // Append record to the batch
-        records.push_back(
-            self.send_record(partition, *key.as_slice(), value, timestamp)
-                .await,
-        );
+        records.push_back(self.send_record(partition, key, value, timestamp).await);
 
         Ok(())
     }
 
     async fn send_record(
         &self,
-        partition: u32,
-        key: [u8; 32],
+        partition: i32,
+        key: Vec<u8>,
         value: Vec<u8>,
         timestamp: Option<i64>,
     ) -> PendingRecord {
@@ -191,7 +220,7 @@ impl KafkaProducer {
         let interval = Duration::from_millis(self.config.attempt_interval_ms);
 
         let mut record = FutureRecord::to(&self.config.topic)
-            .partition(partition as i32)
+            .partition(partition)
             .key(&key)
             .payload(&value)
             .headers(headers.clone());
@@ -232,7 +261,7 @@ struct Batch {
 }
 
 struct PendingRecord {
-    key: [u8; 32],
+    key: Vec<u8>,
     value: Vec<u8>,
     created_at: Instant,
     delivery_future: DeliveryFuture,

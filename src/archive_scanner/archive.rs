@@ -3,7 +3,6 @@ use std::hash::Hash;
 use std::str::FromStr;
 
 use anyhow::Result;
-use ton_block::Deserializable;
 use ton_indexer::utils::*;
 use ton_types::UInt256;
 
@@ -100,16 +99,16 @@ enum ArchivePackageError {
     UnexpectedEntryEof,
 }
 
-pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, ton_block::Block)>> {
+pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, BlockStuff)>> {
     let mut reader = ArchivePackageViewReader::new(&data)?;
 
-    let mut map: BTreeMap<ton_block::BlockIdExt, ton_block::Block> = Default::default();
+    let mut map: BTreeMap<ton_block::BlockIdExt, BlockStuff> = Default::default();
 
     while let Some(entry) = reader.read_next()? {
         match PackageEntryId::from_filename(entry.name)? {
             PackageEntryId::Block(id) => {
                 if let btree_map::Entry::Vacant(map) = map.entry(id.clone()) {
-                    map.insert(deserialize_block(&id, entry.data)?);
+                    map.insert(BlockStuff::deserialize_checked(id, entry.data.to_vec())?);
                 }
             }
             PackageEntryId::Proof | PackageEntryId::ProofLink => {}
@@ -117,20 +116,6 @@ pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, ton_bl
     }
 
     Ok(map.into_iter().collect())
-}
-
-fn deserialize_block(id: &ton_block::BlockIdExt, data: &[u8]) -> Result<ton_block::Block> {
-    let file_hash = UInt256::calc_file_hash(data);
-    if id.file_hash != file_hash {
-        return Err(anyhow::anyhow!("wrong file_hash for {}", id));
-    }
-
-    let root = ton_types::deserialize_tree_of_cells(&mut std::io::Cursor::new(data))?;
-    if id.root_hash != root.repr_hash() {
-        return Err(anyhow::anyhow!("wrong root hash for {}", id));
-    }
-
-    ton_block::Block::construct_from(&mut root.into())
 }
 
 #[derive(Default)]

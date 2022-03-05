@@ -70,6 +70,7 @@ impl TonSubscriber {
     async fn handle_block(
         &self,
         block_stuff: &BlockStuff,
+        block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
     ) -> Result<()> {
         self.shard_accounts_subscriber
@@ -78,7 +79,7 @@ impl TonSubscriber {
             .context("Failed to update shard accounts subscriber")?;
 
         self.handler
-            .handle_block(block_stuff.id(), block_stuff.block(), true)
+            .handle_block(block_stuff, block_proof, shard_state, true)
             .await
             .context("Failed to handle block")
     }
@@ -90,18 +91,19 @@ impl ton_indexer::Subscriber for TonSubscriber {
         &self,
         _: BriefBlockMeta,
         block: &BlockStuff,
-        _: Option<&BlockProofStuff>,
+        block_proof: Option<&BlockProofStuff>,
         shard_state: &ShardStateStuff,
     ) -> Result<()> {
-        self.handle_block(block, Some(shard_state)).await
+        self.handle_block(block, block_proof, Some(shard_state))
+            .await
     }
 
     async fn process_archive_block(
         &self,
         _: BriefBlockMeta,
         block: &BlockStuff,
-        _: Option<&BlockProofStuff>,
+        block_proof: Option<&BlockProofStuff>,
     ) -> Result<()> {
-        self.handle_block(block, None).await
+        self.handle_block(block, block_proof, None).await
     }
 }
