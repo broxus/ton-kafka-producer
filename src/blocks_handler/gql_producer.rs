@@ -87,6 +87,11 @@ impl GqlProducer {
             }
         }
 
+        futures::future::join_all(futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?;
+
         Ok(())
     }
 
