@@ -327,6 +327,11 @@ impl DbRecord {
         let boc = ton_types::serialize_toc(&account.account_cell())?;
         let account = account.read_account()?;
 
+        let id = account
+            .get_addr()
+            .map(ToString::to_string)
+            .unwrap_or_default();
+
         let set = ton_block_json::AccountSerializationSet {
             account,
             prev_account_state,
@@ -336,7 +341,7 @@ impl DbRecord {
 
         let value = ton_block_json::db_serialize_account("id", &set)?;
         Ok(DbRecord::Account {
-            id: value["id"].to_string(),
+            id,
             data: serde_json::to_string(&value)?,
         })
     }
@@ -346,6 +351,7 @@ impl DbRecord {
         workchain_id: i32,
         prev_account_state: Option<ton_block::Account>,
     ) -> Result<Self> {
+        let id = construct_address(workchain_id, account_id.clone())?;
         let set = ton_block_json::DeletedAccountSerializationSet {
             account_id,
             workchain_id,
@@ -354,7 +360,7 @@ impl DbRecord {
 
         let value = ton_block_json::db_serialize_deleted_account("id", &set)?;
         Ok(DbRecord::Account {
-            id: value["id"].to_string(),
+            id: id.to_string(),
             data: serde_json::to_string(&value)?,
         })
     }
@@ -392,6 +398,17 @@ impl DbRecord {
             root_hash: block_id.root_hash.inner(),
             boc: block_boc,
         })
+    }
+}
+
+fn construct_address(
+    workchain_id: i32,
+    account_id: ton_types::AccountId,
+) -> Result<ton_block::MsgAddressInt> {
+    if workchain_id <= 127 && workchain_id >= -128 && account_id.remaining_bits() == 256 {
+        ton_block::MsgAddressInt::with_standart(None, workchain_id as i8, account_id)
+    } else {
+        ton_block::MsgAddressInt::with_variant(None, workchain_id, account_id)
     }
 }
 
