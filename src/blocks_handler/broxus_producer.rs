@@ -5,18 +5,18 @@ use ton_indexer::utils::BlockIdExtExtension;
 use ton_types::{HashmapType, UInt256};
 
 use crate::config::*;
-use crate::kafka_producer::KafkaProducer;
+use crate::kafka_producer::*;
 
-pub struct BlocksHandler {
+pub struct BroxusProducer {
     compressor: ton_block_compressor::ZstdWrapper,
     raw_transaction_producer: KafkaProducer,
 }
 
-impl BlocksHandler {
-    pub fn new(config: KafkaConfig) -> Result<Self> {
+impl BroxusProducer {
+    pub fn new(config: KafkaProducerConfig) -> Result<Self> {
         Ok(Self {
             compressor: Default::default(),
-            raw_transaction_producer: KafkaProducer::new(config.raw_transaction_producer)?,
+            raw_transaction_producer: KafkaProducer::new(config, Partitions::Fixed(0..=8))?,
         })
     }
 
@@ -42,10 +42,12 @@ impl BlocksHandler {
 
         let now = chrono::Utc::now().timestamp();
         for TransactionRecord { key, value } in records {
-            futures.push(
-                self.raw_transaction_producer
-                    .write(partition, key, value, Some(now)),
-            );
+            futures.push(self.raw_transaction_producer.write(
+                partition,
+                key.into_vec(),
+                value,
+                Some(now),
+            ));
         }
 
         futures::future::join_all(futures)
