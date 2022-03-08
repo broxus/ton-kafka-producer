@@ -106,4 +106,8 @@ impl ton_indexer::Subscriber for TonSubscriber {
     ) -> Result<()> {
         self.handle_block(block, block_proof, None).await
     }
+
+    async fn process_full_state(&self, state: &ShardStateStuff) -> Result<()> {
+        self.handler.handle_state(state).await
+    }
 }

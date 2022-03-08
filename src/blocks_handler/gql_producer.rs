@@ -1,4 +1,5 @@
 use anyhow::Result;
+use futures::TryStreamExt;
 use once_cell::race::OnceBox;
 use tiny_adnl::utils::*;
 use ton_block::{Deserializable, HashmapAugType, Serializable};
@@ -33,6 +34,29 @@ impl GqlProducer {
             account_producer: make_producer(config.account_producer)?,
             block_proof_producer: make_producer(config.block_proof_producer)?,
         })
+    }
+
+    pub async fn handle_state(&self, state: &ShardStateStuff) -> Result<()> {
+        let producer = match &self.account_producer {
+            Some(producer) => producer,
+            None => return Ok(()),
+        };
+
+        let tasks = futures::stream::FuturesUnordered::new();
+
+        state.state().read_accounts()?.iterate_objects(|account| {
+            let (id, data) = match DbRecord::account(account, None)? {
+                DbRecord::Account { id, data } => (id, data),
+                _ => return Ok(true),
+            };
+
+            tasks.push(producer.write(-1, id.into_bytes(), data.into_bytes(), None));
+            Ok(true)
+        })?;
+
+        tasks.try_collect().await?;
+
+        Ok(())
     }
 
     pub async fn handle_block(

@@ -24,6 +24,14 @@ impl BlocksHandler {
         }
     }
 
+    pub async fn handle_state(&self, state: &ShardStateStuff) -> Result<()> {
+        if let Self::Gql(gql) = self {
+            gql.handle_state(state).await
+        } else {
+            Ok(())
+        }
+    }
+
     pub async fn handle_block(
         &self,
         block_stuff: &BlockStuff,
