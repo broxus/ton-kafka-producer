@@ -23,6 +23,7 @@
 ### Config example
 ```yaml
 ---
+# Optional states endpoint (see docs below)
 rpc_config:
   # States RPC endpoint
   address: "0.0.0.0:8081"
@@ -51,6 +52,7 @@ scan_type:
     # max_db_memory_usage: 3000000000
 
 kafka_settings:
+  mode: broxus
   raw_transaction_producer:
     topic: everscale-transactions
     brokers: "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
@@ -62,6 +64,36 @@ kafka_settings:
         sasl_mechanism: "sasl mechanism"
         sasl_username: "your sasl username"
         sasl_password: "your sasl password"
+        
+# OR gql kafka producer
+#
+#kafka_settings:
+#  mode: gql
+#  requests_consumer:
+#    topic: gql.requests
+#    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
+#    group_id: gql-mainnet
+#    session_timeout_ms: 6000
+#  block_producer:
+#    topic: gql.blocks
+#    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
+#    attempt_interval_ms: 100
+#  message_producer:
+#    topic: gql.messages
+#    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
+#    attempt_interval_ms: 100
+#  transaction_producer:
+#    topic: gql.transactions
+#    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
+#    attempt_interval_ms: 100
+#  account_producer:
+#    topic: gql.accounts
+#    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
+#    attempt_interval_ms: 100
+#  block_proof_producer:
+#    topic: gql.blocks_signatures
+#    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
+#    attempt_interval_ms: 100
 
 # log4rs settings.
 # See https://docs.rs/log4rs/1.0.0/log4rs/ for more details
