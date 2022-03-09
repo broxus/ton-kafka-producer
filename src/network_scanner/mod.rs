@@ -6,13 +6,16 @@ use ton_indexer::BriefBlockMeta;
 
 use crate::config::*;
 
+use self::message_consumer::*;
 use self::shard_accounts_subscriber::*;
 use crate::blocks_handler::*;
 
+mod message_consumer;
 pub mod shard_accounts_subscriber;
 
 pub struct NetworkScanner {
     indexer: Arc<ton_indexer::Engine>,
+    message_consumer: Option<MessageConsumer>,
 }
 
 impl NetworkScanner {
@@ -22,6 +25,11 @@ impl NetworkScanner {
         global_config: ton_indexer::GlobalConfig,
         shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
     ) -> Result<Arc<Self>> {
+        let requests_consumer_config = match &kafka_settings {
+            KafkaConfig::Gql(gql) => gql.requests_consumer.clone(),
+            KafkaConfig::Broxus { .. } => None,
+        };
+
         let subscriber: Arc<dyn ton_indexer::Subscriber> =
             TonSubscriber::new(kafka_settings, shard_accounts_subscriber)?;
 
@@ -34,13 +42,28 @@ impl NetworkScanner {
             vec![subscriber],
         )
         .await
-        .context("Failed to start TON node")?;
+        .context("Failed to start node")?;
 
-        Ok(Arc::new(Self { indexer }))
+        let message_consumer = if let Some(config) = requests_consumer_config {
+            Some(
+                MessageConsumer::new(indexer.clone(), config)
+                    .context("Failed to create message consumer")?,
+            )
+        } else {
+            None
+        };
+
+        Ok(Arc::new(Self {
+            indexer,
+            message_consumer,
+        }))
     }
 
     pub async fn start(self: &Arc<Self>) -> Result<()> {
         self.indexer.start().await?;
+        if let Some(consumer) = &self.message_consumer {
+            consumer.start();
+        }
         Ok(())
     }
 

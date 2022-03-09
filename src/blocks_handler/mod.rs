@@ -7,6 +7,7 @@ use crate::config::*;
 
 mod broxus_producer;
 mod gql_producer;
+mod kafka_producer;
 
 #[allow(clippy::large_enum_variant)]
 pub enum BlocksHandler {

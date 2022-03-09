@@ -6,8 +6,8 @@ use ton_block::{Deserializable, HashmapAugType, Serializable};
 use ton_indexer::utils::{BlockProofStuff, BlockStuff, ShardStateStuff};
 use ton_types::HashmapType;
 
+use super::kafka_producer::*;
 use crate::config::*;
-use crate::kafka_producer::*;
 
 pub struct GqlProducer {
     block_producer: Option<KafkaProducer>,

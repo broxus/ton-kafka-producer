@@ -4,8 +4,8 @@ use ton_block_compressor::ZstdWrapper;
 use ton_indexer::utils::BlockIdExtExtension;
 use ton_types::{HashmapType, UInt256};
 
+use super::kafka_producer::*;
 use crate::config::*;
-use crate::kafka_producer::*;
 
 pub struct BroxusProducer {
     compressor: ton_block_compressor::ZstdWrapper,

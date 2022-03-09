@@ -163,15 +163,35 @@ pub enum KafkaConfig {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct GqlKafkaConfig {
+    /// Messages to send
+    pub requests_consumer: Option<KafkaConsumerConfig>,
+    /// Parsed blocks producer
     pub block_producer: Option<KafkaProducerConfig>,
+    /// Raw blocks producer
     pub raw_block_producer: Option<KafkaProducerConfig>,
+    /// Parsed messages producer
     pub message_producer: Option<KafkaProducerConfig>,
+    /// Parsed transactions producers
     pub transaction_producer: Option<KafkaProducerConfig>,
+    /// Account states producer
     pub account_producer: Option<KafkaProducerConfig>,
+    /// Raw block proofs producer
     pub block_proof_producer: Option<KafkaProducerConfig>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KafkaConsumerConfig {
+    pub topic: String,
+    pub brokers: String,
+    pub group_id: String,
+    #[serde(default)]
+    pub security_config: Option<SecurityConfig>,
+    pub session_timeout_ms: u32,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct KafkaProducerConfig {
     pub topic: String,
     pub brokers: String,
@@ -200,6 +220,7 @@ pub enum SecurityConfig {
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SaslConfig {
     pub security_protocol: String,
     pub ssl_ca_location: String,
