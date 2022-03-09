@@ -1,4 +1,4 @@
-use std::collections::{btree_map, BTreeMap};
+use std::collections::BTreeMap;
 use std::hash::Hash;
 use std::str::FromStr;
 
@@ -6,19 +6,74 @@ use anyhow::Result;
 use ton_indexer::utils::*;
 use ton_types::UInt256;
 
-pub struct ArchivePackageViewReader<'a> {
+pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, ParsedEntry)>> {
+    let mut reader = ArchivePackageViewReader::new(&data)?;
+
+    let mut map: BTreeMap<ton_block::BlockIdExt, PartiallyParsedEntry> = Default::default();
+
+    while let Some(entry) = reader.read_next()? {
+        let entry_id = PackageEntryId::from_filename(entry.name)?;
+        let is_link = matches!(&entry_id, PackageEntryId::ProofLink(_));
+
+        match PackageEntryId::from_filename(entry.name)? {
+            PackageEntryId::Block(id) => {
+                let mut parsed_entry = map.entry(id.clone()).or_default();
+                parsed_entry.block_stuff =
+                    Some(BlockStuff::deserialize_checked(id, entry.data.to_vec())?);
+            }
+            PackageEntryId::Proof(id) | PackageEntryId::ProofLink(id) => {
+                let mut parsed_entry = map.entry(id.clone()).or_default();
+                parsed_entry.block_proof_stuff = Some(BlockProofStuff::deserialize(
+                    id,
+                    entry.data.to_vec(),
+                    is_link,
+                )?);
+            }
+        }
+    }
+
+    let result = map
+        .into_iter()
+        .map(|(key, entry)| match entry.block_stuff {
+            Some(block_stuff) => Ok((
+                key,
+                ParsedEntry {
+                    block_stuff,
+                    block_proof_stuff: entry.block_proof_stuff,
+                },
+            )),
+            None => Err(ArchiveError::MissingBlockData(key)),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(result)
+}
+
+#[derive(Default, Clone)]
+pub struct ParsedEntry {
+    pub block_stuff: BlockStuff,
+    pub block_proof_stuff: Option<BlockProofStuff>,
+}
+
+#[derive(Default)]
+struct PartiallyParsedEntry {
+    block_stuff: Option<BlockStuff>,
+    block_proof_stuff: Option<BlockProofStuff>,
+}
+
+struct ArchivePackageViewReader<'a> {
     data: &'a [u8],
     offset: usize,
 }
 
 impl<'a> ArchivePackageViewReader<'a> {
-    pub fn new(data: &'a [u8]) -> Result<Self> {
+    fn new(data: &'a [u8]) -> Result<Self> {
         let mut offset = 0;
         read_package_header(data, &mut offset)?;
         Ok(Self { data, offset })
     }
 
-    pub fn read_next(&mut self) -> Result<Option<ArchivePackageEntryView<'a>>> {
+    fn read_next(&mut self) -> Result<Option<ArchivePackageEntryView<'a>>> {
         ArchivePackageEntryView::read_from_view(self.data, &mut self.offset)
     }
 }
@@ -43,7 +98,7 @@ fn read_package_header(buf: &[u8], offset: &mut usize) -> Result<()> {
     }
 }
 
-pub struct ArchivePackageEntryView<'a> {
+struct ArchivePackageEntryView<'a> {
     pub name: &'a str,
     pub data: &'a [u8],
 }
@@ -99,39 +154,21 @@ enum ArchivePackageError {
     UnexpectedEntryEof,
 }
 
-pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, BlockStuff)>> {
-    let mut reader = ArchivePackageViewReader::new(&data)?;
-
-    let mut map: BTreeMap<ton_block::BlockIdExt, BlockStuff> = Default::default();
-
-    while let Some(entry) = reader.read_next()? {
-        match PackageEntryId::from_filename(entry.name)? {
-            PackageEntryId::Block(id) => {
-                if let btree_map::Entry::Vacant(map) = map.entry(id.clone()) {
-                    map.insert(BlockStuff::deserialize_checked(id, entry.data.to_vec())?);
-                }
-            }
-            PackageEntryId::Proof | PackageEntryId::ProofLink => {}
-        }
-    }
-
-    Ok(map.into_iter().collect())
-}
-
-#[derive(Default)]
-pub struct BlockMaps {
-    pub blocks: BTreeMap<ton_block::BlockIdExt, BlockStuff>,
+#[derive(Debug, thiserror::Error)]
+enum ArchiveError {
+    #[error("Block data is missing for block {0}")]
+    MissingBlockData(ton_block::BlockIdExt),
 }
 
 #[derive(Debug, Hash, Eq, PartialEq)]
-pub enum PackageEntryId<I> {
+enum PackageEntryId<I> {
     Block(I),
-    Proof,
-    ProofLink,
+    Proof(I),
+    ProofLink(I),
 }
 
 impl PackageEntryId<ton_block::BlockIdExt> {
-    pub fn from_filename(filename: &str) -> Result<Self> {
+    fn from_filename(filename: &str) -> Result<Self> {
         let block_id_pos = match filename.find('(') {
             Some(pos) => pos,
             None => return Err(PackageEntryIdError::InvalidFileName.into()),
@@ -141,8 +178,8 @@ impl PackageEntryId<ton_block::BlockIdExt> {
 
         Ok(match prefix {
             PACKAGE_ENTRY_BLOCK => Self::Block(parse_block_id(block_id)?),
-            PACKAGE_ENTRY_PROOF => Self::Proof,
-            PACKAGE_ENTRY_PROOF_LINK => Self::ProofLink,
+            PACKAGE_ENTRY_PROOF => Self::Proof(parse_block_id(block_id)?),
+            PACKAGE_ENTRY_PROOF_LINK => Self::ProofLink(parse_block_id(block_id)?),
             _ => return Err(PackageEntryIdError::InvalidFileName.into()),
         })
     }

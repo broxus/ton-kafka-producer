@@ -5,7 +5,6 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
-use ton_indexer::utils::*;
 
 use self::archive::*;
 use crate::blocks_handler::*;
@@ -81,7 +80,9 @@ impl ArchivesScanner {
             .flatten()
         {
             task_counter.fetch_add(1, Ordering::Release);
-            tx.send(task).await.context("Failed to send task")?;
+            tx.send(task)
+                .await
+                .map_err(|_| anyhow::anyhow!("Failed to send task"))?;
         }
 
         // Drop tx so tasks writer will stop
@@ -102,9 +103,14 @@ async fn start_writing_blocks(
     handler: Arc<BlocksHandler>,
     mut rx: BlockTaskRx,
 ) {
-    while let Some((block_id, block)) = rx.recv().await {
+    while let Some((block_id, parsed)) = rx.recv().await {
         if let Err(e) = handler
-            .handle_block(&block, None, None, false)
+            .handle_block(
+                &parsed.block_stuff,
+                parsed.block_proof_stuff.as_ref(),
+                None,
+                false,
+            )
             .await
             .context("Failed to handle block")
         {
@@ -117,4 +123,4 @@ async fn start_writing_blocks(
 }
 
 type BlockTaskRx = tokio::sync::mpsc::Receiver<BlockTask>;
-type BlockTask = (ton_block::BlockIdExt, BlockStuff);
+type BlockTask = (ton_block::BlockIdExt, ParsedEntry);
