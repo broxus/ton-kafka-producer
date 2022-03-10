@@ -93,13 +93,13 @@ impl MessageConsumer {
 
 async fn send_external_message(
     engine: &ton_indexer::Engine,
-    data: &[u8],
+    mut data: &[u8],
 ) -> Result<(), MessageBroadcastError> {
     if data.len() > MAX_EXTERNAL_MESSAGE_SIZE {
         return Err(MessageBroadcastError::TooLarge(data.len()));
     }
 
-    let root = ton_types::deserialize_tree_of_cells(&mut std::io::Cursor::new(data))
+    let root = ton_types::deserialize_tree_of_cells(&mut data)
         .map_err(MessageBroadcastError::InvalidBoc)?;
 
     if root.level() != 0 {
