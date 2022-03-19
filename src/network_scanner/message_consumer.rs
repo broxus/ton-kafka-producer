@@ -99,6 +99,7 @@ async fn send_external_message(
         return Err(MessageBroadcastError::TooLarge(data.len()));
     }
 
+    let original_data = data;
     let root = ton_types::deserialize_tree_of_cells(&mut data)
         .map_err(MessageBroadcastError::InvalidBoc)?;
 
@@ -121,7 +122,7 @@ async fn send_external_message(
     };
 
     engine
-        .broadcast_external_message(&to, data)
+        .broadcast_external_message(&to, original_data)
         .await
         .map_err(MessageBroadcastError::OverlayBroadcastFailed)
 }
