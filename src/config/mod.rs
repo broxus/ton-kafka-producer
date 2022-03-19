@@ -32,6 +32,7 @@ fn default_metrics_path() -> SocketAddr {
     "0.0.0.0:12345".parse().unwrap()
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum ScanType {
@@ -77,6 +78,17 @@ pub struct NodeConfig {
     pub parallel_archive_downloads: u32,
 
     pub start_from: Option<u32>,
+
+    #[serde(default)]
+    pub adnl_options: tiny_adnl::AdnlNodeOptions,
+    #[serde(default)]
+    pub rldp_options: tiny_adnl::RldpNodeOptions,
+    #[serde(default)]
+    pub dht_options: tiny_adnl::DhtNodeOptions,
+    #[serde(default)]
+    pub neighbours_options: tiny_adnl::NeighboursOptions,
+    #[serde(default)]
+    pub overlay_shard_options: tiny_adnl::OverlayShardOptions,
 }
 
 impl NodeConfig {
@@ -122,11 +134,11 @@ impl NodeConfig {
             old_blocks_policy: old_blocks,
             max_db_memory_usage: self.max_db_memory_usage,
             parallel_archive_downloads: self.parallel_archive_downloads,
-            adnl_options: Default::default(),
-            rldp_options: Default::default(),
-            dht_options: Default::default(),
-            neighbours_options: Default::default(),
-            overlay_shard_options: Default::default(),
+            adnl_options: self.adnl_options,
+            rldp_options: self.rldp_options,
+            dht_options: self.dht_options,
+            neighbours_options: self.neighbours_options,
+            overlay_shard_options: self.overlay_shard_options,
         })
     }
 }
@@ -141,6 +153,11 @@ impl Default for NodeConfig {
             max_db_memory_usage: ton_indexer::default_max_db_memory_usage(),
             parallel_archive_downloads: 16,
             start_from: None,
+            adnl_options: Default::default(),
+            rldp_options: Default::default(),
+            dht_options: Default::default(),
+            neighbours_options: Default::default(),
+            overlay_shard_options: Default::default(),
         }
     }
 }
