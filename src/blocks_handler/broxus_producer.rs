@@ -94,7 +94,7 @@ fn prepare_raw_transaction_record(
         _ => return Ok(None),
     };
 
-    let key = raw_transaction.hash(ton_types::DEPTH_SIZE);
+    let key = raw_transaction.hash(ton_types::MAX_LEVEL);
     let value = compressor.compress_owned(&boc)?;
 
     Ok(Some(TransactionRecord { key, value }))
