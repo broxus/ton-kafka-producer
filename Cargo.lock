@@ -850,7 +850,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#702237ef1c43f24b10de274487fb172a7beea9bc"
+source = "git+https://github.com/broxus/ton-indexer.git#8f7790342c20439e32e28baf492e9aaa23b49f50"
 dependencies = [
  "anyhow",
  "base64",
@@ -1013,9 +1013,9 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
-version = "0.14.17"
+version = "0.14.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "043f0e083e9901b6cc658a77d1eb86f4fc650bbb977a4337dd63192826aa85dd"
+checksum = "b26ae0a80afebe130861d90abf98e3814a4f28a4c6ffeb5ab8ebb2be311e0ef2"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -2517,9 +2517,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.7"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "004cbc98f30fa233c61a38bc77e96a9106e65c88f2d3bef182ae952027e5753d"
+checksum = "1a155319dc3fbcb8edabad6e7facf1a4d3059e1a1d4e2efac88492a41f2c7261"
 dependencies = [
  "libc",
  "num_threads",
@@ -2702,7 +2702,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#702237ef1c43f24b10de274487fb172a7beea9bc"
+source = "git+https://github.com/broxus/ton-indexer.git#8f7790342c20439e32e28baf492e9aaa23b49f50"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2746,7 +2746,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#702237ef1c43f24b10de274487fb172a7beea9bc"
+source = "git+https://github.com/broxus/ton-indexer.git#8f7790342c20439e32e28baf492e9aaa23b49f50"
 dependencies = [
  "anyhow",
  "errno",
@@ -3027,7 +3027,7 @@ dependencies = [
  "radix_trie",
  "rand",
  "thiserror",
- "time 0.3.7",
+ "time 0.3.8",
  "tokio",
  "trust-dns-proto",
 ]
