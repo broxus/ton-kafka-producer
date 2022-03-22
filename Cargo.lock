@@ -2528,7 +2528,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#7578bcd57a4fed8f47b4458ee573499b1f968a3f"
+source = "git+https://github.com/broxus/tiny-adnl#422484d5beec053a1e6618b6b39788c2c7ff36e7"
 dependencies = [
  "aes",
  "anyhow",
@@ -3453,5 +3453,4 @@ checksum = "9fd07cbbc53846d9145dbffdf6dd09a7a0aa52be46741825f5c97bdd4f73f12b"
 dependencies = [
  "cc",
  "libc",
- "pkg-config",
 ]
