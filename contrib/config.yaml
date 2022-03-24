@@ -26,6 +26,7 @@ scan_type:
     # max_db_memory_usage: 3000000000
 
 kafka_settings:
+  mode: broxus
   raw_transaction_producer:
     topic: everscale-transactions
     brokers: "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
