@@ -2517,9 +2517,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.8"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a155319dc3fbcb8edabad6e7facf1a4d3059e1a1d4e2efac88492a41f2c7261"
+checksum = "c2702e08a7a860f005826c6815dcac101b19b5eb330c27fe4a5928fec1d20ddd"
 dependencies = [
  "libc",
  "num_threads",
@@ -2528,7 +2528,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#422484d5beec053a1e6618b6b39788c2c7ff36e7"
+source = "git+https://github.com/broxus/tiny-adnl#b582b40199cb9af4553d4e9e74611013017aff41"
 dependencies = [
  "aes",
  "anyhow",
@@ -3027,7 +3027,7 @@ dependencies = [
  "radix_trie",
  "rand",
  "thiserror",
- "time 0.3.8",
+ "time 0.3.9",
  "tokio",
  "trust-dns-proto",
 ]
