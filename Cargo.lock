@@ -82,9 +82,9 @@ checksum = "a4c527152e37cf757a3f78aae5a06fbeefdb07ccc535c980a3208ee3060dd544"
 
 [[package]]
 name = "async-trait"
-version = "0.1.52"
+version = "0.1.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "061a7acccaa286c011ddc30970520b98fa40e00c9d644633fb26b5fc63a265e3"
+checksum = "ed6aa3524a2dfcf9fe180c51eae2b58738348d819517ceadf95789c51fff7600"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -846,7 +846,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#8f7790342c20439e32e28baf492e9aaa23b49f50"
+source = "git+https://github.com/broxus/ton-indexer.git#35c684a07539589bffdc50068a837752d959cbf4"
 dependencies = [
  "anyhow",
  "base64",
@@ -871,7 +871,7 @@ dependencies = [
  "indexmap",
  "slab",
  "tokio",
- "tokio-util",
+ "tokio-util 0.6.9",
  "tracing",
 ]
 
@@ -1961,9 +1961,9 @@ checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
 name = "quote"
-version = "1.0.16"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4af2ec4714533fcdf07e886f17025ace8b997b9ce51204ee69b6da831c3da57"
+checksum = "632d02bff7f874a36f33ea8bb416cd484b90cc66c1194b1a1110d067a7013f58"
 dependencies = [
  "proc-macro2",
 ]
@@ -2500,7 +2500,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#b582b40199cb9af4553d4e9e74611013017aff41"
+source = "git+https://github.com/broxus/tiny-adnl#f9a13e41de500ca62d519cf8f86b012c06393594"
 dependencies = [
  "aes",
  "anyhow",
@@ -2524,6 +2524,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-io-timeout",
+ "tokio-util 0.7.0",
  "ton_api",
  "ton_types",
  "x25519-dalek-ng",
@@ -2654,6 +2655,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-util"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64910e1b9c1901aaf5375561e35b9c057d95ff41a44ede043a03e09279eabaf1"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "futures-sink",
+ "log",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
 name = "toml"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2674,7 +2689,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#8f7790342c20439e32e28baf492e9aaa23b49f50"
+source = "git+https://github.com/broxus/ton-indexer.git#35c684a07539589bffdc50068a837752d959cbf4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2709,6 +2724,7 @@ dependencies = [
  "thiserror",
  "tiny-adnl",
  "tokio",
+ "tokio-util 0.7.0",
  "ton-indexer-alloc",
  "ton_api",
  "ton_block",
@@ -2718,7 +2734,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#8f7790342c20439e32e28baf492e9aaa23b49f50"
+source = "git+https://github.com/broxus/ton-indexer.git#35c684a07539589bffdc50068a837752d959cbf4"
 dependencies = [
  "anyhow",
  "errno",
@@ -3210,7 +3226,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-tungstenite",
- "tokio-util",
+ "tokio-util 0.6.9",
  "tower-service",
  "tracing",
 ]
