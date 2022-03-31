@@ -272,6 +272,13 @@ impl std::fmt::Display for Metrics<'_> {
         f.begin_metric("jemalloc_fragmentation_bytes")
             .value(fragmentation)?;
 
+        // DB
+        let db = indexer.get_db_metrics();
+        f.begin_metric("db_shard_state_storage_max_new_mc_cell_count")
+            .value(db.shard_state_storage.max_new_mc_cell_count)?;
+        f.begin_metric("db_shard_state_storage_max_new_sc_cell_count")
+            .value(db.shard_state_storage.max_new_sc_cell_count)?;
+
         // RocksDB
 
         let ton_indexer::RocksdbStats {
