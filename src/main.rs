@@ -213,9 +213,15 @@ impl std::fmt::Display for Metrics<'_> {
         f.begin_metric("network_rldp_transfers_cache_len")
             .value(network_metrics.rldp.transfers_cache_len)?;
 
-        for (overlay_id, overlay_metrics) in indexer.network_overlay_metrics() {
-            const OVERLAY_ID: &str = "overlay_id";
+        const OVERLAY_ID: &str = "overlay_id";
 
+        for (overlay_id, neighbour_metrics) in indexer.network_neighbour_metrics() {
+            f.begin_metric("overlay_peer_search_task_count")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(neighbour_metrics.peer_search_task_count)?;
+        }
+
+        for (overlay_id, overlay_metrics) in indexer.network_overlay_metrics() {
             let overlay_id = base64::encode(overlay_id.as_ref());
 
             f.begin_metric("overlay_owned_broadcasts_len")

@@ -846,7 +846,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#23855a04f839bd9e07f8a051727243fd4c252c7d"
+source = "git+https://github.com/broxus/ton-indexer.git#6028f03e8dd3066a7a866afe8a19aee40474e2fa"
 dependencies = [
  "anyhow",
  "base64",
@@ -858,9 +858,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.12"
+version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62eeb471aa3e3c9197aa4bfeabfe02982f6dc96f750486c0bb0009ac58b26d2b"
+checksum = "37a82c6d637fc9515a4694bbf1cb2457b79d81ce52b3108bdeea58b07dd34a57"
 dependencies = [
  "bytes",
  "fnv",
@@ -871,7 +871,7 @@ dependencies = [
  "indexmap",
  "slab",
  "tokio",
- "tokio-util 0.6.9",
+ "tokio-util 0.7.1",
  "tracing",
 ]
 
@@ -1386,7 +1386,7 @@ dependencies = [
 [[package]]
 name = "nekoton"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#2b8672db55da89696fbef2962f40687098f449b8"
+source = "git+https://github.com/broxus/nekoton.git#4576a1f3953fffcad3dfada3fb23e8e1dd90e6f4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1429,7 +1429,7 @@ dependencies = [
 [[package]]
 name = "nekoton-abi"
 version = "0.11.0"
-source = "git+https://github.com/broxus/nekoton.git#2b8672db55da89696fbef2962f40687098f449b8"
+source = "git+https://github.com/broxus/nekoton.git#4576a1f3953fffcad3dfada3fb23e8e1dd90e6f4"
 dependencies = [
  "anyhow",
  "base64",
@@ -1455,7 +1455,7 @@ dependencies = [
 [[package]]
 name = "nekoton-contracts"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#2b8672db55da89696fbef2962f40687098f449b8"
+source = "git+https://github.com/broxus/nekoton.git#4576a1f3953fffcad3dfada3fb23e8e1dd90e6f4"
 dependencies = [
  "anyhow",
  "nekoton-abi",
@@ -1470,7 +1470,7 @@ dependencies = [
 [[package]]
 name = "nekoton-derive"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#2b8672db55da89696fbef2962f40687098f449b8"
+source = "git+https://github.com/broxus/nekoton.git#4576a1f3953fffcad3dfada3fb23e8e1dd90e6f4"
 dependencies = [
  "either",
  "proc-macro2",
@@ -1481,7 +1481,7 @@ dependencies = [
 [[package]]
 name = "nekoton-indexer-utils"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#2b8672db55da89696fbef2962f40687098f449b8"
+source = "git+https://github.com/broxus/nekoton.git#4576a1f3953fffcad3dfada3fb23e8e1dd90e6f4"
 dependencies = [
  "anyhow",
  "nekoton",
@@ -1498,7 +1498,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#2b8672db55da89696fbef2962f40687098f449b8"
+source = "git+https://github.com/broxus/nekoton.git#4576a1f3953fffcad3dfada3fb23e8e1dd90e6f4"
 dependencies = [
  "anyhow",
  "base64",
@@ -2501,7 +2501,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#12b7536825a343795c57aa28a1155e4ed3735050"
+source = "git+https://github.com/broxus/tiny-adnl#4c4552e28d369896b13ec5bc59344f2d60e9823e"
 dependencies = [
  "aes",
  "anyhow",
@@ -2666,6 +2666,7 @@ dependencies = [
  "futures-sink",
  "pin-project-lite",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2689,7 +2690,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#23855a04f839bd9e07f8a051727243fd4c252c7d"
+source = "git+https://github.com/broxus/ton-indexer.git#6028f03e8dd3066a7a866afe8a19aee40474e2fa"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2734,7 +2735,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#23855a04f839bd9e07f8a051727243fd4c252c7d"
+source = "git+https://github.com/broxus/ton-indexer.git#6028f03e8dd3066a7a866afe8a19aee40474e2fa"
 dependencies = [
  "anyhow",
  "errno",
