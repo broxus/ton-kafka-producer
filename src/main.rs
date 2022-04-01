@@ -242,6 +242,24 @@ impl std::fmt::Display for Metrics<'_> {
             f.begin_metric("overlay_neighbours")
                 .label(OVERLAY_ID, &overlay_id)
                 .value(overlay_metrics.neighbours)?;
+            f.begin_metric("overlay_received_peers_data_len")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.received_peers_data_len)?;
+            f.begin_metric("overlay_received_peers_barrier_count")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.received_peers_barrier_count)?;
+            f.begin_metric("overlay_received_broadcasts_data_len")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.received_broadcasts_data_len)?;
+            f.begin_metric("overlay_received_broadcasts_barrier_count")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.received_broadcasts_barrier_count)?;
+            f.begin_metric("overlay_received_catchain_data_len")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.received_catchain_data_len)?;
+            f.begin_metric("overlay_received_catchain_barrier_count")
+                .label(OVERLAY_ID, &overlay_id)
+                .value(overlay_metrics.received_catchain_barrier_count)?;
         }
 
         // RPC
