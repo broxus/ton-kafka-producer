@@ -104,9 +104,12 @@ async fn start_writing_blocks(
     mut rx: BlockTaskRx,
 ) {
     while let Some((block_id, parsed)) = rx.recv().await {
+        let (stuff, data) = parsed.block_stuff;
+
         if let Err(e) = handler
             .handle_block(
-                &parsed.block_stuff,
+                &stuff,
+                Some(data),
                 parsed.block_proof_stuff.as_ref(),
                 None,
                 false,

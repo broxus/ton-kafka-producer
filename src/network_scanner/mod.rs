@@ -2,13 +2,12 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use ton_indexer::utils::*;
-use ton_indexer::BriefBlockMeta;
-
-use crate::config::*;
+use ton_indexer::ProcessBlockContext;
 
 use self::message_consumer::*;
 use self::shard_accounts_subscriber::*;
 use crate::blocks_handler::*;
+use crate::config::*;
 
 mod message_consumer;
 pub mod shard_accounts_subscriber;
@@ -75,6 +74,7 @@ impl NetworkScanner {
 struct TonSubscriber {
     handler: BlocksHandler,
     shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
+    extract_all: bool,
 }
 
 impl TonSubscriber {
@@ -82,9 +82,12 @@ impl TonSubscriber {
         config: KafkaConfig,
         shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
     ) -> Result<Arc<Self>> {
+        let extract_all = matches!(&config, KafkaConfig::Gql(_));
+
         Ok(Arc::new(Self {
             handler: BlocksHandler::new(config)?,
             shard_accounts_subscriber,
+            extract_all,
         }))
     }
 }
@@ -93,6 +96,7 @@ impl TonSubscriber {
     async fn handle_block(
         &self,
         block_stuff: &BlockStuff,
+        block_data: Option<Vec<u8>>,
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
     ) -> Result<()> {
@@ -102,7 +106,7 @@ impl TonSubscriber {
             .context("Failed to update shard accounts subscriber")?;
 
         self.handler
-            .handle_block(block_stuff, block_proof, shard_state, true)
+            .handle_block(block_stuff, block_data, block_proof, shard_state, true)
             .await
             .context("Failed to handle block")
     }
@@ -110,24 +114,22 @@ impl TonSubscriber {
 
 #[async_trait::async_trait]
 impl ton_indexer::Subscriber for TonSubscriber {
-    async fn process_block(
-        &self,
-        _: BriefBlockMeta,
-        block: &BlockStuff,
-        block_proof: Option<&BlockProofStuff>,
-        shard_state: &ShardStateStuff,
-    ) -> Result<()> {
-        self.handle_block(block, block_proof, Some(shard_state))
-            .await
-    }
+    async fn process_block(&self, ctx: ProcessBlockContext<'_>) -> Result<()> {
+        let (block_data, block_proof) = if self.extract_all {
+            let block_data = Some(ctx.load_block_data().await?);
+            let block_proof = Some(ctx.load_block_proof().await?);
+            (block_data, block_proof)
+        } else {
+            (None, None)
+        };
 
-    async fn process_archive_block(
-        &self,
-        _: BriefBlockMeta,
-        block: &BlockStuff,
-        block_proof: Option<&BlockProofStuff>,
-    ) -> Result<()> {
-        self.handle_block(block, block_proof, None).await
+        self.handle_block(
+            ctx.block_stuff(),
+            block_data,
+            block_proof.as_ref(),
+            ctx.shard_state_stuff(),
+        )
+        .await
     }
 
     async fn process_full_state(&self, state: &ShardStateStuff) -> Result<()> {

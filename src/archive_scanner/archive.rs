@@ -18,16 +18,13 @@ pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, Parsed
         match PackageEntryId::from_filename(entry.name)? {
             PackageEntryId::Block(id) => {
                 let mut parsed_entry = map.entry(id.clone()).or_default();
-                parsed_entry.block_stuff =
-                    Some(BlockStuff::deserialize_checked(id, entry.data.to_vec())?);
+                let block = BlockStuff::deserialize_checked(id, entry.data)?;
+                parsed_entry.block_stuff = Some((block, entry.data.to_vec()));
             }
             PackageEntryId::Proof(id) | PackageEntryId::ProofLink(id) => {
                 let mut parsed_entry = map.entry(id.clone()).or_default();
-                parsed_entry.block_proof_stuff = Some(BlockProofStuff::deserialize(
-                    id,
-                    entry.data.to_vec(),
-                    is_link,
-                )?);
+                let proof = BlockProofStuff::deserialize(id, entry.data, is_link)?;
+                parsed_entry.block_proof_stuff = Some(proof);
             }
         }
     }
@@ -51,13 +48,13 @@ pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, Parsed
 
 #[derive(Default, Clone)]
 pub struct ParsedEntry {
-    pub block_stuff: BlockStuff,
+    pub block_stuff: (BlockStuff, Vec<u8>),
     pub block_proof_stuff: Option<BlockProofStuff>,
 }
 
 #[derive(Default)]
 struct PartiallyParsedEntry {
-    block_stuff: Option<BlockStuff>,
+    block_stuff: Option<(BlockStuff, Vec<u8>)>,
     block_proof_stuff: Option<BlockProofStuff>,
 }
 

@@ -36,6 +36,7 @@ impl BlocksHandler {
     pub async fn handle_block(
         &self,
         block_stuff: &BlockStuff,
+        block_data: Option<Vec<u8>>,
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
         ignore_prepare_error: bool,
@@ -48,7 +49,7 @@ impl BlocksHandler {
             }
             Self::Gql(producer) => {
                 producer
-                    .handle_block(block_stuff, block_proof, shard_state)
+                    .handle_block(block_stuff, block_data, block_proof, shard_state)
                     .await
             }
         }

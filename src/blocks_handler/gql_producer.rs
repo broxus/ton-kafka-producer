@@ -62,10 +62,12 @@ impl GqlProducer {
     pub async fn handle_block(
         &self,
         block_stuff: &BlockStuff,
+        block_data: Option<Vec<u8>>,
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
     ) -> Result<()> {
-        let records = match self.prepare_records(block_stuff, block_proof, shard_state) {
+        let records = match self.prepare_records(block_stuff, block_data, block_proof, shard_state)
+        {
             Ok(records) => records,
             Err(e) => {
                 log::error!("Failed to process block {}: {:?}", block_stuff.id(), e);
@@ -122,6 +124,7 @@ impl GqlProducer {
     fn prepare_records(
         &self,
         block_stuff: &BlockStuff,
+        block_data: Option<Vec<u8>>,
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
     ) -> Result<Vec<DbRecord>> {
@@ -209,9 +212,20 @@ impl GqlProducer {
             }
         }
 
-        // Process block
         if self.block_producer.is_some() {
-            records.push(DbRecord::block(block, block_id, block_stuff.data())?);
+            records.push(DbRecord::block(
+                block,
+                block_id,
+                block_data.as_deref().unwrap_or(&[]),
+            )?);
+        }
+
+        // Process block
+        if let Some(raw_data) = block_data {
+            // Process raw block
+            if self.raw_block_producer.is_some() {
+                records.push(DbRecord::raw_block(block_id, raw_data)?);
+            }
         }
 
         // Process block proof
@@ -219,11 +233,6 @@ impl GqlProducer {
             if let Some(proof_stuff) = block_proof {
                 records.push(DbRecord::block_proof(proof_stuff.proof())?);
             }
-        }
-
-        // Process raw block
-        if self.raw_block_producer.is_some() {
-            records.push(DbRecord::raw_block(block_id, block_stuff.data().to_vec())?);
         }
 
         // Done
