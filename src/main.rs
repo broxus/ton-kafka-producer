@@ -12,6 +12,9 @@ use ton_kafka_producer::network_scanner::shard_accounts_subscriber::ShardAccount
 use ton_kafka_producer::network_scanner::*;
 use ton_kafka_producer::rpc;
 
+#[global_allocator]
+static GLOBAL: ton_indexer::alloc::Allocator = ton_indexer::alloc::allocator();
+
 #[tokio::main]
 async fn main() -> Result<()> {
     run(argh::from_env()).await
