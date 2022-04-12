@@ -75,7 +75,7 @@ pub struct NodeConfig {
     pub max_db_memory_usage: usize,
 
     /// Archives map queue. Default: 16
-    pub parallel_archive_downloads: u32,
+    pub parallel_archive_downloads: usize,
 
     pub start_from: Option<u32>,
 
@@ -109,7 +109,7 @@ impl NodeConfig {
         // Prepare DB folder
         std::fs::create_dir_all(&self.db_path)?;
 
-        let old_blocks = match self.start_from {
+        let old_blocks_policy = match self.start_from {
             None => OldBlocksPolicy::Ignore,
             Some(a) => OldBlocksPolicy::Sync { from_seqno: a },
         };
@@ -130,10 +130,13 @@ impl NodeConfig {
                 ..Default::default()
             }),
             shard_state_cache_options: Some(ShardStateCacheOptions::default()),
-            archives_enabled: false,
-            old_blocks_policy: old_blocks,
             max_db_memory_usage: self.max_db_memory_usage,
-            parallel_archive_downloads: self.parallel_archive_downloads,
+            archive_options: Some(Default::default()),
+            sync_options: ton_indexer::SyncOptions {
+                old_blocks_policy,
+                parallel_archive_downloads: self.parallel_archive_downloads,
+                ..Default::default()
+            },
             adnl_options: self.adnl_options,
             rldp_options: self.rldp_options,
             dht_options: self.dht_options,
