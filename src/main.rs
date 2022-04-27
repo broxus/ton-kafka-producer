@@ -36,7 +36,7 @@ async fn run(app: App) -> Result<()> {
 
             log::info!("Initializing producer...");
 
-            let shard_accounts_subscriber = Arc::new(ShardAccountsSubscriber::default());
+            let (shard_accounts_subscriber, current_key_block) = ShardAccountsSubscriber::new();
 
             let rpc_metrics = Arc::new(rpc::Metrics::default());
 
@@ -76,6 +76,13 @@ async fn run(app: App) -> Result<()> {
             });
 
             engine.start().await.context("Failed to start engine")?;
+            {
+                let last_key_block = engine.indexer().load_last_key_block().await?;
+                let mut current_key_block = current_key_block.lock();
+                if current_key_block.is_none() {
+                    *current_key_block = Some(last_key_block.into_block());
+                }
+            }
 
             log::info!("Initialized producer");
             futures::future::pending().await

@@ -96,47 +96,6 @@ impl NetworkScanner {
     }
 }
 
-#[derive(thiserror::Error, Clone, Debug)]
-pub enum QueryError {
-    #[error("Connection error")]
-    ConnectionError,
-    #[error("Failed to serialize message")]
-    FailedToSerialize,
-    #[error("Invalid account state proof")]
-    InvalidAccountStateProof,
-    #[error("Invalid block")]
-    InvalidBlock,
-    #[error("Unknown")]
-    Unknown,
-    #[error("Not ready")]
-    NotReady,
-    #[error("External message expected")]
-    ExternalTonMessageExpected,
-}
-
-impl QueryError {
-    pub fn code(&self) -> i64 {
-        match self {
-            QueryError::ConnectionError => -32001,
-            QueryError::FailedToSerialize => -32002,
-            QueryError::InvalidAccountStateProof => -32004,
-            QueryError::InvalidBlock => -32006,
-            QueryError::NotReady => -32007,
-            QueryError::Unknown => -32603,
-            QueryError::ExternalTonMessageExpected => -32005,
-        }
-    }
-}
-
-impl From<QueryError> for JsonRpcError {
-    fn from(error: QueryError) -> JsonRpcError {
-        let code = error.code();
-        let message = error.to_string();
-        let reason = JsonRpcErrorReason::ServerError(code as i32);
-        JsonRpcError::new(reason, message, serde_json::Value::Null)
-    }
-}
-
 struct TonSubscriber {
     handler: BlocksHandler,
     shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
@@ -203,5 +162,46 @@ impl ton_indexer::Subscriber for TonSubscriber {
 
     async fn process_full_state(&self, state: &ShardStateStuff) -> Result<()> {
         self.handler.handle_state(state).await
+    }
+}
+
+#[derive(thiserror::Error, Clone, Debug)]
+pub enum QueryError {
+    #[error("Connection error")]
+    ConnectionError,
+    #[error("Failed to serialize message")]
+    FailedToSerialize,
+    #[error("Invalid account state proof")]
+    InvalidAccountStateProof,
+    #[error("Invalid block")]
+    InvalidBlock,
+    #[error("Unknown")]
+    Unknown,
+    #[error("Not ready")]
+    NotReady,
+    #[error("External message expected")]
+    ExternalTonMessageExpected,
+}
+
+impl QueryError {
+    pub fn code(&self) -> i64 {
+        match self {
+            QueryError::ConnectionError => -32001,
+            QueryError::FailedToSerialize => -32002,
+            QueryError::InvalidAccountStateProof => -32004,
+            QueryError::InvalidBlock => -32006,
+            QueryError::NotReady => -32007,
+            QueryError::Unknown => -32603,
+            QueryError::ExternalTonMessageExpected => -32005,
+        }
+    }
+}
+
+impl From<QueryError> for JsonRpcError {
+    fn from(error: QueryError) -> JsonRpcError {
+        let code = error.code();
+        let message = error.to_string();
+        let reason = JsonRpcErrorReason::ServerError(code as i32);
+        JsonRpcError::new(reason, message, serde_json::Value::Null)
     }
 }

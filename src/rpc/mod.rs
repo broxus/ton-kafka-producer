@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use crate::network_scanner::NetworkScanner;
+use crate::network_scanner::{NetworkScanner, QueryError};
 use anyhow::Result;
 use axum::response::IntoResponse;
 use axum::{routing::post, Extension, Json};
@@ -90,7 +90,10 @@ async fn jrpc_router(
                 .subscriber
                 .get_key_block()
                 .map(|x| RawBlock { block: x });
-            axum_jrpc::JsonRpcRepsonse::success(answer_id, block)
+            match block {
+                None => axum_jrpc::JsonRpcRepsonse::error(answer_id, QueryError::NotReady.into()),
+                Some(b) => axum_jrpc::JsonRpcRepsonse::success(answer_id, b),
+            }
         }
         "getContractState" => {
             let request: GetContractState = req.parse_params()?;

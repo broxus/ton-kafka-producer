@@ -20,6 +20,12 @@ pub struct ShardAccountsSubscriber {
 }
 
 impl ShardAccountsSubscriber {
+    pub fn new() -> (Arc<Self>, Arc<Mutex<Option<ton_block::Block>>>) {
+        let this = Self::default();
+        let current_keyblock = this.current_keyblock.clone();
+        (Arc::new(this), current_keyblock)
+    }
+
     pub(crate) async fn handle_block(
         &self,
         block_stuff: &BlockStuff,
