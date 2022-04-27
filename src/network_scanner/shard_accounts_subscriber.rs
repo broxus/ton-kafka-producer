@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
+use std::sync::Arc;
 
 use anyhow::Result;
 use nekoton::transport::models::ExistingContract;
 use nekoton_indexer_utils::{contains_account, ExistingContractExt};
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use rustc_hash::FxHasher;
 use ton_block::HashmapAugType;
 use ton_indexer::utils::{BlockIdExtExtension, BlockStuff, ShardStateStuff};
@@ -15,6 +16,7 @@ pub type FxHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 pub struct ShardAccountsSubscriber {
     masterchain_accounts_cache: RwLock<ton_block::ShardAccounts>,
     shard_accounts_cache: RwLock<FxHashMap<ton_block::ShardIdent, ton_block::ShardAccounts>>,
+    current_keyblock: Arc<Mutex<Option<ton_block::Block>>>,
 }
 
 impl ShardAccountsSubscriber {
@@ -22,6 +24,7 @@ impl ShardAccountsSubscriber {
         &self,
         block_stuff: &BlockStuff,
         shard_state: Option<&ShardStateStuff>,
+        is_key_block: bool,
     ) -> Result<()> {
         let shard_state = match shard_state {
             Some(state) => state,
@@ -33,6 +36,9 @@ impl ShardAccountsSubscriber {
 
         if block_stuff.id().is_masterchain() {
             *self.masterchain_accounts_cache.write() = shard_accounts;
+            if is_key_block {
+                *self.current_keyblock.lock() = Some(block_stuff.block().clone());
+            }
         } else {
             let mut cache = self.shard_accounts_cache.write();
 
@@ -98,5 +104,9 @@ impl ShardAccountsSubscriber {
             }
             Ok(None)
         }
+    }
+
+    pub fn get_key_block(&self) -> Option<ton_block::Block> {
+        self.current_keyblock.lock().clone()
     }
 }

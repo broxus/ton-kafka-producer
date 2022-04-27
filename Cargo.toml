@@ -35,7 +35,8 @@ serde_json = "1.0"
 serde_yaml = "0.8"
 thiserror = "1.0"
 tokio = { version = "1.17.0", features = ["full", "parking_lot"] }
-warp = "0.3.2"
+axum = "0.5.4"
+axum-jrpc = "0.1"
 
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }

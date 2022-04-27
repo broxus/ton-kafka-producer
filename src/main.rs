@@ -40,22 +40,23 @@ async fn run(app: App) -> Result<()> {
 
             let rpc_metrics = Arc::new(rpc::Metrics::default());
 
-            if let Some(config) = config.rpc_config {
-                tokio::spawn(rpc::serve(
-                    shard_accounts_subscriber.clone(),
-                    config.address,
-                    rpc_metrics.clone(),
-                ));
-            }
-
             let engine = NetworkScanner::new(
                 config.kafka_settings,
                 node_config,
                 global_config,
-                shard_accounts_subscriber,
+                shard_accounts_subscriber.clone(),
             )
             .await
             .context("Failed to create engine")?;
+
+            if let Some(config) = config.rpc_config {
+                tokio::spawn(rpc::serve(
+                    shard_accounts_subscriber,
+                    config.address,
+                    rpc_metrics.clone(),
+                    engine.clone(),
+                ));
+            }
 
             let (_exporter, metrics_writer) = pomfrit::create_exporter(Some(pomfrit::Config {
                 listen_address: config.metrics_path,

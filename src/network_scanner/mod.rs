@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use axum_jrpc::error::{JsonRpcError, JsonRpcErrorReason};
+use ton_block::Serializable;
 use ton_indexer::utils::*;
 use ton_indexer::ProcessBlockContext;
 
@@ -69,6 +71,70 @@ impl NetworkScanner {
     pub fn indexer(&self) -> &ton_indexer::Engine {
         self.indexer.as_ref()
     }
+
+    pub async fn send_message(&self, message: ton_block::Message) -> Result<(), QueryError> {
+        let to = match message.header() {
+            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => {
+                ton_block::AccountIdPrefixFull::prefix(&header.dst)
+                    .map_err(|_| QueryError::FailedToSerialize)?
+            }
+            _ => return Err(QueryError::ExternalTonMessageExpected),
+        };
+
+        let cells = message
+            .write_to_new_cell()
+            .map_err(|_| QueryError::FailedToSerialize)?
+            .into();
+
+        let serialized =
+            ton_types::serialize_toc(&cells).map_err(|_| QueryError::FailedToSerialize)?;
+
+        self.indexer
+            .broadcast_external_message(&to, &serialized)
+            .await
+            .map_err(|_| QueryError::ConnectionError)
+    }
+}
+
+#[derive(thiserror::Error, Clone, Debug)]
+pub enum QueryError {
+    #[error("Connection error")]
+    ConnectionError,
+    #[error("Failed to serialize message")]
+    FailedToSerialize,
+    #[error("Invalid account state proof")]
+    InvalidAccountStateProof,
+    #[error("Invalid block")]
+    InvalidBlock,
+    #[error("Unknown")]
+    Unknown,
+    #[error("Not ready")]
+    NotReady,
+    #[error("External message expected")]
+    ExternalTonMessageExpected,
+}
+
+impl QueryError {
+    pub fn code(&self) -> i64 {
+        match self {
+            QueryError::ConnectionError => -32001,
+            QueryError::FailedToSerialize => -32002,
+            QueryError::InvalidAccountStateProof => -32004,
+            QueryError::InvalidBlock => -32006,
+            QueryError::NotReady => -32007,
+            QueryError::Unknown => -32603,
+            QueryError::ExternalTonMessageExpected => -32005,
+        }
+    }
+}
+
+impl From<QueryError> for JsonRpcError {
+    fn from(error: QueryError) -> JsonRpcError {
+        let code = error.code();
+        let message = error.to_string();
+        let reason = JsonRpcErrorReason::ServerError(code as i32);
+        JsonRpcError::new(reason, message, serde_json::Value::Null)
+    }
 }
 
 struct TonSubscriber {
@@ -99,9 +165,10 @@ impl TonSubscriber {
         block_data: Option<Vec<u8>>,
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
+        is_key_block: bool,
     ) -> Result<()> {
         self.shard_accounts_subscriber
-            .handle_block(block_stuff, shard_state)
+            .handle_block(block_stuff, shard_state, is_key_block)
             .await
             .context("Failed to update shard accounts subscriber")?;
 
@@ -123,11 +190,13 @@ impl ton_indexer::Subscriber for TonSubscriber {
             (None, None)
         };
 
+        let is_key_block = ctx.meta().is_key_block();
         self.handle_block(
             ctx.block_stuff(),
             block_data,
             block_proof.as_ref(),
             ctx.shard_state_stuff(),
+            is_key_block,
         )
         .await
     }
