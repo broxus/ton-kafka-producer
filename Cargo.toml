@@ -32,7 +32,7 @@ thiserror = "1.0"
 tokio = { version = "1.17.0", features = ["full", "parking_lot"] }
 axum = "0.5.4"
 axum-jrpc = "0.1"
-
+tower-http = {version= "0.3.0",features =["compression-gzip"] }
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }
 ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
@@ -46,6 +46,7 @@ nekoton-utils = { git = "https://github.com/broxus/nekoton.git", default-feature
 nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
+tower = "0.4.12"
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }

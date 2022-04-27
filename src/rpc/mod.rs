@@ -30,7 +30,11 @@ pub async fn serve(
     let router = axum::Router::new()
         .route("/account", post(state_receiver))
         .route("/rpc", post(jrpc_router))
-        .layer(Extension(state));
+        .layer(
+            tower::ServiceBuilder::new()
+                .layer(Extension(state))
+                .layer(tower_http::compression::CompressionLayer::new().gzip(true)),
+        );
 
     axum::Server::bind(&addr)
         .serve(router.into_make_service())
@@ -113,6 +117,7 @@ async fn jrpc_router(
                 Err(e) => axum_jrpc::JsonRpcRepsonse::error(answer_id, e.into()),
             }
         }
+        "test" => axum_jrpc::JsonRpcRepsonse::success(answer_id, "a".repeat(1024)),
         m => req.method_not_found(m),
     };
 
