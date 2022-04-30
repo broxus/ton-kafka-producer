@@ -117,7 +117,6 @@ async fn jrpc_router(
                 Err(e) => axum_jrpc::JsonRpcRepsonse::error(answer_id, e.into()),
             }
         }
-        "test" => axum_jrpc::JsonRpcRepsonse::success(answer_id, "a".repeat(1024)),
         m => req.method_not_found(m),
     };
 
