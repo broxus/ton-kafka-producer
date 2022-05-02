@@ -7,9 +7,11 @@ edition = "2021"
 anyhow = "1.0"
 argh = "0.1"
 async-trait = "0.1"
+axum = "0.5.4"
+axum-jrpc = "0.1"
 base64 = "0.13"
 chrono = "0.4"
-config = { version = "0.12", default-features = false, features = ["yaml"] }
+config = { version = "0.13", default-features = false, features = ["yaml"] }
 countme = { version = "3.0.0", features = ["enable"] }
 futures = "0.3"
 hex = "0.4"
@@ -30,9 +32,9 @@ serde_json = "1.0"
 serde_yaml = "0.8"
 thiserror = "1.0"
 tokio = { version = "1.17.0", features = ["full", "parking_lot"] }
-axum = "0.5.4"
-axum-jrpc = "0.1"
-tower-http = {version= "0.3.0",features =["compression-gzip"] }
+tower = "0.4.12"
+tower-http = { version = "0.3.0", features = ["compression-gzip"] }
+
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }
 ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
@@ -46,7 +48,6 @@ nekoton-utils = { git = "https://github.com/broxus/nekoton.git", default-feature
 nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
-tower = "0.4.12"
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }

@@ -29,17 +29,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ahash"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
-dependencies = [
- "getrandom",
- "once_cell",
- "version_check",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -158,9 +147,9 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bdc19781b16e32f8a7200368a336fa4509d4b72ef15dd4e41df5290855ee1e6"
+checksum = "da31c0ed7b4690e2c78fe4b880d21cd7db04a346ebc658b4270251b695437f17"
 dependencies = [
  "async-trait",
  "bytes",
@@ -358,9 +347,9 @@ dependencies = [
 
 [[package]]
 name = "config"
-version = "0.12.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54ad70579325f1a38ea4c13412b82241c5900700a69785d73e2736bd65a33f86"
+checksum = "3ea917b74b6edfb5024e3b55d3c8f710b5f4ed92646429601a42e96f0812b31b"
 dependencies = [
  "async-trait",
  "lazy_static",
@@ -560,9 +549,9 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.3.1"
+version = "5.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "084c61a88f94d7557441d01e89fc3800b0b80658462b05aa7b55dfae069da09b"
+checksum = "94b5a84352d6654d195b2365e38b5a7eacfdca4ad1b375196a1f76c6d7dd01ce"
 dependencies = [
  "cfg-if",
  "hashbrown 0.12.0",
@@ -928,9 +917,6 @@ name = "hashbrown"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c21d40587b92fa6a6c6e3c1bdbf87d75511db5672f9c93175574b3a00df1758"
-dependencies = [
- "ahash",
-]
 
 [[package]]
 name = "heck"
@@ -1395,7 +1381,7 @@ dependencies = [
 [[package]]
 name = "nekoton"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#1b2ba418346a13b2ec91edaa24228e143944f0d9"
+source = "git+https://github.com/broxus/nekoton.git#4b924bb6b896f13815b4d074c2f08677dd670b22"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1413,16 +1399,13 @@ dependencies = [
  "nekoton-contracts",
  "nekoton-utils",
  "num-bigint",
- "num-traits",
  "once_cell",
  "parking_lot",
- "pin-project-lite",
  "rand",
  "ring",
  "secstr",
  "serde",
  "serde_json",
- "sha2",
  "thiserror",
  "tiny-bip39",
  "tiny-hderive",
@@ -1431,14 +1414,13 @@ dependencies = [
  "ton_block",
  "ton_executor",
  "ton_types",
- "ton_vm",
  "zeroize",
 ]
 
 [[package]]
 name = "nekoton-abi"
 version = "0.11.0"
-source = "git+https://github.com/broxus/nekoton.git#1b2ba418346a13b2ec91edaa24228e143944f0d9"
+source = "git+https://github.com/broxus/nekoton.git#4b924bb6b896f13815b4d074c2f08677dd670b22"
 dependencies = [
  "anyhow",
  "base64",
@@ -1451,7 +1433,6 @@ dependencies = [
  "num-traits",
  "serde",
  "serde_json",
- "sha2",
  "smallvec",
  "thiserror",
  "ton_abi",
@@ -1464,11 +1445,10 @@ dependencies = [
 [[package]]
 name = "nekoton-contracts"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#1b2ba418346a13b2ec91edaa24228e143944f0d9"
+source = "git+https://github.com/broxus/nekoton.git#4b924bb6b896f13815b4d074c2f08677dd670b22"
 dependencies = [
  "anyhow",
  "nekoton-abi",
- "nekoton-utils",
  "once_cell",
  "thiserror",
  "ton_abi",
@@ -1479,7 +1459,7 @@ dependencies = [
 [[package]]
 name = "nekoton-derive"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#1b2ba418346a13b2ec91edaa24228e143944f0d9"
+source = "git+https://github.com/broxus/nekoton.git#4b924bb6b896f13815b4d074c2f08677dd670b22"
 dependencies = [
  "either",
  "proc-macro2",
@@ -1490,37 +1470,31 @@ dependencies = [
 [[package]]
 name = "nekoton-indexer-utils"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#1b2ba418346a13b2ec91edaa24228e143944f0d9"
+source = "git+https://github.com/broxus/nekoton.git#4b924bb6b896f13815b4d074c2f08677dd670b22"
 dependencies = [
  "anyhow",
  "nekoton",
  "nekoton-abi",
  "nekoton-utils",
- "parking_lot",
  "thiserror",
  "ton_abi",
  "ton_block",
  "ton_types",
- "ton_vm",
 ]
 
 [[package]]
 name = "nekoton-utils"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#1b2ba418346a13b2ec91edaa24228e143944f0d9"
+source = "git+https://github.com/broxus/nekoton.git#4b924bb6b896f13815b4d074c2f08677dd670b22"
 dependencies = [
  "anyhow",
  "base64",
  "chacha20poly1305",
  "ed25519-dalek",
  "hex",
- "log",
- "num-bigint",
- "num-traits",
  "ring",
  "secstr",
  "serde",
- "sha2",
  "thiserror",
  "ton_block",
  "ton_types",
@@ -2118,9 +2092,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.136"
+version = "1.0.137"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce31e24b01e1e524df96f1c2fdd054405f8d7376249a5110886fb4b658484789"
+checksum = "61ea8d54c77f8315140a05f4c7237403bf38b72704d031543aa1d16abbf517d1"
 dependencies = [
  "serde_derive",
 ]
@@ -2137,9 +2111,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.136"
+version = "1.0.137"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08597e7152fcd306f41838ed3e37be9eaeed2b61c42e2117266a554fab4662f9"
+checksum = "1f26faba0c3959972377d3b2d306ee9f71faee9714294e41bb777f83f88578be"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2148,9 +2122,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.79"
+version = "1.0.80"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e8d9fa5c3b304765ce1fd9c4c8a3de2c8db365a5b91be52f186efc675681d95"
+checksum = "f972498cf015f7c0746cac89ebe1d6ef10c293b94175a243a2d9442c163d9944"
 dependencies = [
  "indexmap",
  "itoa",
@@ -2330,18 +2304,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.30"
+version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "854babe52e4df1653706b98fcfc05843010039b406875930a70e4d9644e5c417"
+checksum = "bd829fe32373d27f76265620b5309d0340cb8550f523c1dda251d6298069069a"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.30"
+version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa32fd3f627f367fe16f893e2597ae3c05020f8bba2666a4e6ea73d377e5714b"
+checksum = "0396bc89e626244658bef819e22d0cc459e795a5ebe878e6ec336d1674a8d79a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2414,7 +2388,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#458476c066fa84b68ffdd0eb310125edf484915f"
+source = "git+https://github.com/broxus/tiny-adnl#48023676a1ba1d1e0b95a9db94faa243a00ecb33"
 dependencies = [
  "aes",
  "anyhow",
@@ -2425,6 +2399,7 @@ dependencies = [
  "curve25519-dalek-ng",
  "dashmap",
  "ed25519-dalek",
+ "either",
  "futures-util",
  "generic-array",
  "hex",
@@ -3014,9 +2989,9 @@ checksum = "3ed742d4ea2bd1176e236172c8429aaf54486e7ac098db29ffe6529e0ce50973"
 
 [[package]]
 name = "unicode-xid"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+checksum = "957e51f3646910546462e67d5f7599b9e4fb8acdd304b087a6494730f9eebf04"
 
 [[package]]
 name = "universal-hash"
@@ -3241,9 +3216,9 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.5.4"
+version = "1.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7eb5728b8afd3f280a869ce1d4c554ffaed35f45c231fc41bfbd0381bef50317"
+checksum = "94693807d016b2f2d2e14420eb3bfcca689311ff775dcf113d74ea624b7cdf07"
 dependencies = [
  "zeroize_derive",
 ]

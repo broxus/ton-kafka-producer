@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use crate::network_scanner::{NetworkScanner, QueryError};
 use anyhow::Result;
 use axum::response::IntoResponse;
 use axum::{routing::post, Extension, Json};
@@ -11,9 +10,11 @@ use nekoton::transport::models::{ExistingContract, RawContractState};
 use nekoton_utils::*;
 use serde::{Deserialize, Serialize};
 
-mod requests;
 use crate::network_scanner::shard_accounts_subscriber::*;
+use crate::network_scanner::{NetworkScanner, QueryError};
 use crate::rpc::requests::{GetContractState, RawBlock, SendMessageRequest};
+
+mod requests;
 
 pub async fn serve(
     subscriber: Arc<ShardAccountsSubscriber>,

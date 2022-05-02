@@ -49,15 +49,6 @@ async fn run(app: App) -> Result<()> {
             .await
             .context("Failed to create engine")?;
 
-            if let Some(config) = config.rpc_config {
-                tokio::spawn(rpc::serve(
-                    shard_accounts_subscriber,
-                    config.address,
-                    rpc_metrics.clone(),
-                    engine.clone(),
-                ));
-            }
-
             let (_exporter, metrics_writer) = pomfrit::create_exporter(Some(pomfrit::Config {
                 listen_address: config.metrics_path,
                 ..Default::default()
@@ -65,7 +56,7 @@ async fn run(app: App) -> Result<()> {
             .await?;
 
             metrics_writer.spawn({
-                let rpc_metrics = rpc_metrics;
+                let rpc_metrics = rpc_metrics.clone();
                 let engine = engine.clone();
                 move |buf| {
                     buf.write(Metrics {
@@ -74,6 +65,7 @@ async fn run(app: App) -> Result<()> {
                     });
                 }
             });
+            log::info!("Initialized exporter");
 
             engine.start().await.context("Failed to start engine")?;
             {
@@ -83,6 +75,17 @@ async fn run(app: App) -> Result<()> {
                     *current_key_block = Some(last_key_block.into_block());
                 }
             }
+            log::info!("Initialized engine");
+
+            if let Some(config) = config.rpc_config {
+                tokio::spawn(rpc::serve(
+                    shard_accounts_subscriber,
+                    config.address,
+                    rpc_metrics,
+                    engine,
+                ));
+                log::info!("Initialized RPC");
+            }
 
             log::info!("Initialized producer");
             futures::future::pending().await
@@ -90,12 +93,10 @@ async fn run(app: App) -> Result<()> {
         ScanType::FromArchives { list_path } => {
             let scanner = ArchivesScanner::new(config.kafka_settings, list_path)
                 .context("Failed to create scanner")?;
+
             scanner.run().await.context("Failed to scan archives")
         }
-    }?;
-
-    log::info!("Initialized producer");
-    futures::future::pending().await
+    }
 }
 
 #[derive(Debug, PartialEq, FromArgs)]
@@ -337,7 +338,6 @@ impl std::fmt::Display for Metrics<'_> {
             .value(whole_db_stats.cache_total)?;
 
         let storage_cell = countme::get::<ton_indexer::StorageCell>();
-        let cell = countme::get::<ton_types::Cell>();
 
         f.begin_metric("object_live")
             .label("type", "storage_cell")
@@ -345,13 +345,6 @@ impl std::fmt::Display for Metrics<'_> {
         f.begin_metric("object_max_live")
             .label("type", "storage_cell")
             .value(storage_cell.max_live)?;
-
-        f.begin_metric("object_live")
-            .label("type", "cell")
-            .value(cell.live)?;
-        f.begin_metric("object_max_live")
-            .label("type", "cell")
-            .value(cell.max_live)?;
 
         Ok(())
     }
