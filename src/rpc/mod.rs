@@ -118,8 +118,26 @@ async fn jrpc_router(
                 Err(e) => axum_jrpc::JsonRpcRepsonse::error(answer_id, e.into()),
             }
         }
+        "status" => {
+            let status = get_metrics(&ctx.engine);
+            axum_jrpc::JsonRpcRepsonse::success(answer_id, status)
+        }
         m => req.method_not_found(m),
     };
 
     Ok(answer)
+}
+
+#[derive(Serialize)]
+struct LocalMetrics {
+    mc_diff: i64,
+    sc_diff: i64,
+}
+
+fn get_metrics(engine: &NetworkScanner) -> LocalMetrics {
+    let metrics = engine.indexer().metrics();
+    let mc_diff = metrics.mc_time_diff.load(Ordering::Acquire);
+    let sc_diff = metrics.shard_client_time_diff.load(Ordering::Acquire);
+
+    LocalMetrics { mc_diff, sc_diff }
 }
