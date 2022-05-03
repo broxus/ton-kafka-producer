@@ -47,6 +47,7 @@ pub async fn serve(
 pub struct Metrics {
     pub requests_processed: AtomicU64,
     pub errors: AtomicU64,
+    pub jrpc_requests: AtomicU64,
 }
 
 async fn state_receiver(
@@ -87,6 +88,7 @@ async fn jrpc_router(
     Extension(ctx): Extension<Arc<State>>,
     req: axum_jrpc::JsonRpcExtractor,
 ) -> axum_jrpc::JrpcResult {
+    ctx.metrics.jrpc_requests.fetch_add(1, Ordering::Release);
     let answer_id = req.get_answer_id();
     let method = req.method();
     let answer = match method {

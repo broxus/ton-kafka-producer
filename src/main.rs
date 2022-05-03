@@ -274,6 +274,8 @@ impl std::fmt::Display for Metrics<'_> {
             .value(self.rpc_metrics.requests_processed.load(Ordering::Acquire))?;
         f.begin_metric("rpc_errors")
             .value(self.rpc_metrics.errors.load(Ordering::Acquire))?;
+        f.begin_metric("jrpc_requests_processed")
+            .value(self.rpc_metrics.jrpc_requests.load(Ordering::Acquire))?;
 
         // jemalloc
 
