@@ -45,6 +45,7 @@ impl KafkaProducer {
             client_config.set("message.max.bytes", message_max_size.to_string());
         }
 
+        #[cfg(feature = "sasl")]
         if let Some(SecurityConfig::Sasl(sasl)) = &config.security_config {
             client_config
                 .set("security.protocol", &sasl.security_protocol)

@@ -205,6 +205,7 @@ pub struct KafkaConsumerConfig {
     pub topic: String,
     pub brokers: String,
     pub group_id: String,
+    #[cfg(feature = "sasl")]
     #[serde(default)]
     pub security_config: Option<SecurityConfig>,
     pub session_timeout_ms: u32,
@@ -218,6 +219,7 @@ pub struct KafkaProducerConfig {
     pub message_timeout_ms: Option<u32>,
     pub message_max_size: Option<usize>,
     pub attempt_interval_ms: u64,
+    #[cfg(feature = "sasl")]
     #[serde(default)]
     pub security_config: Option<SecurityConfig>,
     #[serde(default = "default_batch_flush_threshold_size")]

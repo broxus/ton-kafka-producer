@@ -24,6 +24,7 @@ impl MessageConsumer {
             .set("session.timeout.ms", &config.session_timeout_ms.to_string())
             .set("enable.auto.commit", "false");
 
+        #[cfg(feature = "sasl")]
         if let Some(SecurityConfig::Sasl(sasl)) = &config.security_config {
             client_config
                 .set("security.protocol", &sasl.security_protocol)
