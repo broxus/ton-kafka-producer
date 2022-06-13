@@ -13,7 +13,8 @@ base64 = "0.13"
 chrono = "0.4"
 config = { version = "0.13", default-features = false, features = ["yaml"] }
 countme = { version = "3.0.0", features = ["enable"] }
-futures = "0.3"
+everscale-network = "0.3.2"
+futures-util = "0.3"
 hex = "0.4"
 http = "0.2.6"
 indicatif = "0.17.0-rc.9"
@@ -41,13 +42,11 @@ ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor" }
 
-tiny-adnl = { git = "https://github.com/broxus/tiny-adnl" }
-
 nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 nekoton-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 
-ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
+ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = ["count-cells"] }
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }

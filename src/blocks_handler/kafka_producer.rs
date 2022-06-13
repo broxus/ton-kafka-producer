@@ -3,10 +3,10 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
-use futures::future::Either;
+use everscale_network::utils::FxDashMap;
+use futures_util::future::Either;
 use rdkafka::error::{KafkaError, RDKafkaErrorCode};
 use rdkafka::producer::{DeliveryFuture, FutureProducer, FutureRecord};
-use tiny_adnl::utils::*;
 use tokio::sync::Mutex;
 
 use crate::config::*;
@@ -134,9 +134,9 @@ impl KafkaProducer {
 
                 // Create batch to retry
                 batch_to_retry = Some(
-                    futures::future::join_all(
+                    futures_util::future::join_all(
                         // Include first failed item
-                        std::iter::once(Either::Left(futures::future::ready((
+                        std::iter::once(Either::Left(futures_util::future::ready((
                             item.key, item.value,
                         ))))
                         .chain(

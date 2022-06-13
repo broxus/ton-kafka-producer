@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use futures::StreamExt;
+use futures_util::StreamExt;
 use rdkafka::consumer::stream_consumer::StreamConsumer;
 use rdkafka::consumer::{CommitMode, Consumer};
 use rdkafka::Message;
@@ -111,20 +111,18 @@ async fn send_external_message(
         return Err(MessageBroadcastError::TooDeep(root.repr_depth()));
     }
 
-    let message = ton_block::Message::construct_from(&mut root.clone().into())
+    let message = ton_block::Message::construct_from(&mut root.into())
         .map_err(MessageBroadcastError::InvalidMessage)?;
 
     let to = match message.header() {
         ton_block::CommonMsgInfo::ExtInMsgInfo(header) if header.dst.rewrite_pfx().is_none() => {
-            ton_block::AccountIdPrefixFull::prefix(&header.dst)
-                .map_err(MessageBroadcastError::InvalidAccountPrefix)?
+            header.dst.workchain_id()
         }
         _ => return Err(MessageBroadcastError::InvalidHeader),
     };
 
     engine
-        .broadcast_external_message(&to, original_data)
-        .await
+        .broadcast_external_message(to, original_data)
         .map_err(MessageBroadcastError::OverlayBroadcastFailed)
 }
 
@@ -142,8 +140,6 @@ enum MessageBroadcastError {
     InvalidMessage(#[source] anyhow::Error),
     #[error("Invalid header")]
     InvalidHeader,
-    #[error("Invalid account prefix")]
-    InvalidAccountPrefix(#[source] anyhow::Error),
     #[error("Overlay broadcast failed")]
     OverlayBroadcastFailed(#[source] anyhow::Error),
 }

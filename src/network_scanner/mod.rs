@@ -74,10 +74,7 @@ impl NetworkScanner {
 
     pub async fn send_message(&self, message: ton_block::Message) -> Result<(), QueryError> {
         let to = match message.header() {
-            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => {
-                ton_block::AccountIdPrefixFull::prefix(&header.dst)
-                    .map_err(|_| QueryError::FailedToSerialize)?
-            }
+            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => header.dst.workchain_id(),
             _ => return Err(QueryError::ExternalTonMessageExpected),
         };
 
@@ -90,8 +87,7 @@ impl NetworkScanner {
             ton_types::serialize_toc(&cells).map_err(|_| QueryError::FailedToSerialize)?;
 
         self.indexer
-            .broadcast_external_message(&to, &serialized)
-            .await
+            .broadcast_external_message(to, &serialized)
             .map_err(|_| QueryError::ConnectionError)
     }
 }

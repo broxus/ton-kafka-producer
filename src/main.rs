@@ -88,7 +88,7 @@ async fn run(app: App) -> Result<()> {
             }
 
             log::info!("Initialized producer");
-            futures::future::pending().await
+            futures_util::future::pending().await
         }
         ScanType::FromArchives { list_path } => {
             let scanner = ArchivesScanner::new(config.kafka_settings, list_path)
@@ -212,7 +212,7 @@ impl std::fmt::Display for Metrics<'_> {
             .value(network_metrics.adnl.query_count)?;
 
         f.begin_metric("network_dht_peers_cache_len")
-            .value(network_metrics.dht.peers_cache_len)?;
+            .value(network_metrics.dht.known_peers_len)?;
         f.begin_metric("network_dht_bucket_peer_count")
             .value(network_metrics.dht.bucket_peer_count)?;
         f.begin_metric("network_dht_storage_len")
@@ -234,7 +234,7 @@ impl std::fmt::Display for Metrics<'_> {
         }
 
         for (overlay_id, overlay_metrics) in indexer.network_overlay_metrics() {
-            let overlay_id = base64::encode(overlay_id.as_ref());
+            let overlay_id = base64::encode(overlay_id.as_slice());
 
             f.begin_metric("overlay_owned_broadcasts_len")
                 .label(OVERLAY_ID, &overlay_id)
@@ -260,12 +260,6 @@ impl std::fmt::Display for Metrics<'_> {
             f.begin_metric("overlay_received_broadcasts_barrier_count")
                 .label(OVERLAY_ID, &overlay_id)
                 .value(overlay_metrics.received_broadcasts_barrier_count)?;
-            f.begin_metric("overlay_received_catchain_data_len")
-                .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.received_catchain_data_len)?;
-            f.begin_metric("overlay_received_catchain_barrier_count")
-                .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.received_catchain_barrier_count)?;
         }
 
         // RPC
@@ -310,6 +304,12 @@ impl std::fmt::Display for Metrics<'_> {
             .value(db.shard_state_storage.max_new_mc_cell_count)?;
         f.begin_metric("db_shard_state_storage_max_new_sc_cell_count")
             .value(db.shard_state_storage.max_new_sc_cell_count)?;
+        f.begin_metric("object_live")
+            .label("type", "storage_cell")
+            .value(db.storage_cell_live_count)?;
+        f.begin_metric("object_max_live")
+            .label("type", "storage_cell")
+            .value(db.storage_cell_max_live_count)?;
 
         // RocksDB
 
@@ -338,15 +338,6 @@ impl std::fmt::Display for Metrics<'_> {
             .value(whole_db_stats.mem_table_unflushed)?;
         f.begin_metric("rocksdb_memtable_cache_bytes")
             .value(whole_db_stats.cache_total)?;
-
-        let storage_cell = countme::get::<ton_indexer::StorageCell>();
-
-        f.begin_metric("object_live")
-            .label("type", "storage_cell")
-            .value(storage_cell.live)?;
-        f.begin_metric("object_max_live")
-            .label("type", "storage_cell")
-            .value(storage_cell.max_live)?;
 
         Ok(())
     }

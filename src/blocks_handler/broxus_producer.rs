@@ -47,7 +47,7 @@ impl BroxusProducer {
             ));
         }
 
-        futures::future::join_all(futures)
+        futures_util::future::join_all(futures)
             .await
             .into_iter()
             .collect::<Result<Vec<_>>>()?;

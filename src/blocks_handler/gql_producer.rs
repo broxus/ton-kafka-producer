@@ -1,7 +1,7 @@
 use anyhow::Result;
-use futures::TryStreamExt;
+use futures_util::TryStreamExt;
 use once_cell::race::OnceBox;
-use tiny_adnl::utils::*;
+use rustc_hash::FxHashSet;
 use ton_block::{Deserializable, HashmapAugType, Serializable};
 use ton_indexer::utils::{BlockProofStuff, BlockStuff, ShardStateStuff};
 use ton_types::HashmapType;
@@ -42,7 +42,7 @@ impl GqlProducer {
             None => return Ok(()),
         };
 
-        let tasks = futures::stream::FuturesUnordered::new();
+        let tasks = futures_util::stream::FuturesUnordered::new();
 
         state.state().read_accounts()?.iterate_objects(|account| {
             let (id, data) = match DbRecord::account(account, None)? {
@@ -113,7 +113,7 @@ impl GqlProducer {
             }
         }
 
-        futures::future::join_all(futures)
+        futures_util::future::join_all(futures)
             .await
             .into_iter()
             .collect::<Result<Vec<_>>>()?;

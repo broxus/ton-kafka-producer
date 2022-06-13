@@ -2,9 +2,10 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use everscale_network::{adnl, dht, overlay, rldp};
 use rand::Rng;
 use serde::Deserialize;
-use ton_indexer::{OldBlocksPolicy, ShardStateCacheOptions};
+use ton_indexer::OldBlocksPolicy;
 
 /// Main application config (full)
 #[derive(Clone, Deserialize)]
@@ -80,15 +81,15 @@ pub struct NodeConfig {
     pub start_from: Option<u32>,
 
     #[serde(default)]
-    pub adnl_options: tiny_adnl::AdnlNodeOptions,
+    pub adnl_options: adnl::NodeOptions,
     #[serde(default)]
-    pub rldp_options: tiny_adnl::RldpNodeOptions,
+    pub rldp_options: rldp::NodeOptions,
     #[serde(default)]
-    pub dht_options: tiny_adnl::DhtNodeOptions,
+    pub dht_options: dht::NodeOptions,
     #[serde(default)]
-    pub neighbours_options: tiny_adnl::NeighboursOptions,
+    pub overlay_shard_options: overlay::ShardOptions,
     #[serde(default)]
-    pub overlay_shard_options: tiny_adnl::OverlayShardOptions,
+    pub neighbours_options: ton_indexer::NeighboursOptions,
 }
 
 impl NodeConfig {
@@ -129,7 +130,7 @@ impl NodeConfig {
                 enable_for_sync: true,
                 ..Default::default()
             }),
-            shard_state_cache_options: Some(ShardStateCacheOptions::default()),
+            shard_state_cache_options: None, // until state cache GC will be improved
             max_db_memory_usage: self.max_db_memory_usage,
             archive_options: Some(Default::default()),
             sync_options: ton_indexer::SyncOptions {
