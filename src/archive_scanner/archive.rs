@@ -46,7 +46,7 @@ pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, Parsed
     Ok(result)
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct ParsedEntry {
     pub block_stuff: (BlockStuff, Vec<u8>),
     pub block_proof_stuff: Option<BlockProofStuff>,

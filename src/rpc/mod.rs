@@ -58,7 +58,11 @@ async fn state_receiver(
         .requests_processed
         .fetch_add(1, Ordering::Release);
 
-    match ctx.subscriber.get_contract_state(&data.address) {
+    match ctx
+        .subscriber
+        .get_contract_state(&data.address)
+        .and_then(make_existing_contract)
+    {
         Ok(contract) => Ok(Json(contract)),
         Err(e) => {
             ctx.metrics.errors.fetch_add(1, Ordering::Release);
@@ -104,14 +108,38 @@ async fn jrpc_router(
         }
         "getContractState" => {
             let request: GetContractState = req.parse_params()?;
-            let state = ctx
+            match ctx
                 .subscriber
                 .get_contract_state(&request.address)
-                .ok()
-                .flatten() // do we care about the error?
-                .map(RawContractState::Exists)
-                .unwrap_or(RawContractState::NotExists);
-            axum_jrpc::JsonRpcRepsonse::success(answer_id, state)
+                .and_then(make_existing_contract)
+            {
+                Ok(account) => axum_jrpc::JsonRpcRepsonse::success(
+                    answer_id,
+                    account
+                        .map(RawContractState::Exists)
+                        .unwrap_or(RawContractState::NotExists),
+                ),
+                Err(e) => {
+                    log::error!("Failed to read account: {e:?}");
+                    axum_jrpc::JsonRpcRepsonse::error(
+                        answer_id,
+                        QueryError::InvalidAccountState.into(),
+                    )
+                }
+            }
+        }
+        "getContractStateFull" => {
+            let request: GetContractState = req.parse_params()?;
+            match ctx.subscriber.get_contract_state(&request.address) {
+                Ok(account) => axum_jrpc::JsonRpcRepsonse::success(answer_id, account),
+                Err(e) => {
+                    log::error!("Failed to read account (full): {e:?}");
+                    axum_jrpc::JsonRpcRepsonse::error(
+                        answer_id,
+                        QueryError::InvalidAccountState.into(),
+                    )
+                }
+            }
         }
         "sendMessage" => {
             let request: SendMessageRequest = req.parse_params()?;

@@ -167,8 +167,8 @@ pub enum QueryError {
     ConnectionError,
     #[error("Failed to serialize message")]
     FailedToSerialize,
-    #[error("Invalid account state proof")]
-    InvalidAccountStateProof,
+    #[error("Invalid account state")]
+    InvalidAccountState,
     #[error("Invalid block")]
     InvalidBlock,
     #[error("Unknown")]
@@ -184,7 +184,7 @@ impl QueryError {
         match self {
             QueryError::ConnectionError => -32001,
             QueryError::FailedToSerialize => -32002,
-            QueryError::InvalidAccountStateProof => -32004,
+            QueryError::InvalidAccountState => -32004,
             QueryError::InvalidBlock => -32006,
             QueryError::NotReady => -32007,
             QueryError::Unknown => -32603,

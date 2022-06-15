@@ -2,20 +2,22 @@ use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use nekoton::transport::models::ExistingContract;
-use nekoton_indexer_utils::{contains_account, ExistingContractExt};
+use nekoton_abi::{GenTimings, LastTransactionId, TransactionId};
+use nekoton_indexer_utils::contains_account;
 use parking_lot::{Mutex, RwLock};
 use rustc_hash::FxHasher;
-use ton_block::HashmapAugType;
-use ton_indexer::utils::{BlockIdExtExtension, BlockStuff, ShardStateStuff};
+use serde::Serialize;
+use ton_block::{Deserializable, HashmapAugType};
+use ton_indexer::utils::{BlockIdExtExtension, BlockStuff, RefMcStateHandle, ShardStateStuff};
 
 pub type FxHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
 #[derive(Default)]
 pub struct ShardAccountsSubscriber {
-    masterchain_accounts_cache: RwLock<ton_block::ShardAccounts>,
-    shard_accounts_cache: RwLock<FxHashMap<ton_block::ShardIdent, ton_block::ShardAccounts>>,
+    masterchain_accounts_cache: RwLock<Option<ShardAccounts>>,
+    shard_accounts_cache: RwLock<FxHashMap<ton_block::ShardIdent, ShardAccounts>>,
     current_keyblock: Arc<Mutex<Option<ton_block::Block>>>,
 }
 
@@ -38,10 +40,13 @@ impl ShardAccountsSubscriber {
         };
 
         let block_info = &block_stuff.block().read_info()?;
-        let shard_accounts = shard_state.state().read_accounts()?;
+        let shard_accounts = ShardAccounts {
+            accounts: shard_state.state().read_accounts()?,
+            state_handle: shard_state.ref_mc_state_handle().clone(),
+        };
 
         if block_stuff.id().is_masterchain() {
-            *self.masterchain_accounts_cache.write() = shard_accounts;
+            *self.masterchain_accounts_cache.write() = Some(shard_accounts);
             if is_key_block {
                 *self.current_keyblock.lock() = Some(block_stuff.block().clone());
             }
@@ -92,21 +97,21 @@ impl ShardAccountsSubscriber {
     pub fn get_contract_state(
         &self,
         account: &ton_block::MsgAddressInt,
-    ) -> Result<Option<ExistingContract>> {
+    ) -> Result<Option<ShardAccount>> {
         let is_masterchain = account.is_masterchain();
         let account = account.address().get_bytestring_on_stack(0);
         let account = ton_types::UInt256::from_slice(account.as_slice());
 
         if is_masterchain {
-            let cache = self.masterchain_accounts_cache.read();
-            ExistingContract::from_shard_account_opt(&cache.get(&account)?)
+            let state = self.masterchain_accounts_cache.read();
+            state.as_ref().context("Not initialized yet")?.get(&account)
         } else {
             let cache = self.shard_accounts_cache.read();
             for (shard_ident, shard_accounts) in cache.iter() {
                 if !contains_account(shard_ident, &account) {
                     continue;
                 }
-                return ExistingContract::from_shard_account_opt(&shard_accounts.get(&account)?);
+                return shard_accounts.get(&account);
             }
             Ok(None)
         }
@@ -114,5 +119,52 @@ impl ShardAccountsSubscriber {
 
     pub fn get_key_block(&self) -> Option<ton_block::Block> {
         self.current_keyblock.lock().clone()
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShardAccount {
+    #[serde(with = "nekoton_utils::serde_cell")]
+    data: ton_types::Cell,
+    last_transaction_id: LastTransactionId,
+    #[serde(skip)]
+    _state_handle: Arc<RefMcStateHandle>,
+}
+
+pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<ExistingContract>> {
+    let state = match state {
+        Some(this) => this,
+        None => return Ok(None),
+    };
+
+    match ton_block::Account::construct_from_cell(state.data)? {
+        ton_block::Account::AccountNone => Ok(None),
+        ton_block::Account::Account(account) => Ok(Some(ExistingContract {
+            account,
+            timings: GenTimings::Unknown,
+            last_transaction_id: state.last_transaction_id,
+        })),
+    }
+}
+
+struct ShardAccounts {
+    accounts: ton_block::ShardAccounts,
+    state_handle: Arc<RefMcStateHandle>,
+}
+
+impl ShardAccounts {
+    fn get(&self, account: &ton_types::UInt256) -> Result<Option<ShardAccount>> {
+        match self.accounts.get(account)? {
+            Some(account) => Ok(Some(ShardAccount {
+                data: account.account_cell(),
+                last_transaction_id: LastTransactionId::Exact(TransactionId {
+                    lt: account.last_trans_lt(),
+                    hash: *account.last_trans_hash(),
+                }),
+                _state_handle: self.state_handle.clone(),
+            })),
+            None => Ok(None),
+        }
     }
 }

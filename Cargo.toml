@@ -43,6 +43,7 @@ ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor" }
 
 nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
+nekoton-abi = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 nekoton-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 
