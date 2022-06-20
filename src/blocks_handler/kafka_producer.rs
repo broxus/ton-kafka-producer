@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use everscale_network::utils::FxDashMap;
 use futures_util::future::Either;
 use rdkafka::error::{KafkaError, RDKafkaErrorCode};
-use rdkafka::producer::{DeliveryFuture, FutureProducer, FutureRecord};
+use rdkafka::producer::{DeliveryFuture, FutureProducer, FutureRecord, Producer};
 use tokio::sync::Mutex;
 
 use crate::config::*;
@@ -253,6 +253,13 @@ impl KafkaProducer {
                 }
             };
         }
+    }
+}
+
+impl Drop for KafkaProducer {
+    fn drop(&mut self) {
+        log::info!("Flushing kafka producer");
+        self.producer.flush(None);
     }
 }
 

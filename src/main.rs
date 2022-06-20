@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use argh::FromArgs;
 use pomfrit::formatter::*;
 use serde::Deserialize;
+use tokio::signal::unix;
 
 use ton_kafka_producer::archive_scanner::*;
 use ton_kafka_producer::config::*;
@@ -17,7 +18,27 @@ static GLOBAL: ton_indexer::alloc::Allocator = ton_indexer::alloc::allocator();
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    run(argh::from_env()).await
+    let any_signal = any_signal([
+        unix::SignalKind::interrupt(),
+        unix::SignalKind::terminate(),
+        unix::SignalKind::quit(),
+        unix::SignalKind::from_raw(6),  // SIGABRT/SIGIOT
+        unix::SignalKind::from_raw(20), // SIGTSTP
+    ]);
+
+    let run = run(argh::from_env());
+
+    tokio::select! {
+        result = run => result,
+        signal = any_signal => {
+            if let Ok(signal) = signal {
+                log::warn!("Received signal ({:?}). Flushing state...", signal);
+            }
+            // NOTE: engine future is safely dropped here so rocksdb method
+            // `rocksdb_close` is called in DB object destructor
+            Ok(())
+        }
+    }
 }
 
 async fn run(app: App) -> Result<()> {
@@ -109,6 +130,30 @@ struct App {
     /// path to global config file
     #[argh(option, short = 'g')]
     global_config: Option<String>,
+}
+
+fn any_signal<I>(signals: I) -> tokio::sync::oneshot::Receiver<unix::SignalKind>
+where
+    I: IntoIterator<Item = unix::SignalKind>,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+
+    let any_signal = futures_util::future::select_all(signals.into_iter().map(|signal| {
+        Box::pin(async move {
+            unix::signal(signal)
+                .expect("Failed subscribing on unix signals")
+                .recv()
+                .await;
+            signal
+        })
+    }));
+
+    tokio::spawn(async move {
+        let signal = any_signal.await.0;
+        tx.send(signal).ok();
+    });
+
+    rx
 }
 
 fn read_config<P, T>(path: P) -> Result<T>
@@ -344,7 +389,6 @@ impl std::fmt::Display for Metrics<'_> {
 }
 
 async fn memory_profiler() {
-    use tokio::signal::unix;
     use ton_indexer::alloc;
 
     let signal = unix::SignalKind::user_defined1();
