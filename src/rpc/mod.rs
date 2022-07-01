@@ -102,8 +102,8 @@ async fn jrpc_router(
                 .get_key_block()
                 .map(|x| RawBlock { block: x });
             match block {
-                None => axum_jrpc::JsonRpcRepsonse::error(answer_id, QueryError::NotReady.into()),
-                Some(b) => axum_jrpc::JsonRpcRepsonse::success(answer_id, b),
+                None => axum_jrpc::JsonRpcResponse::error(answer_id, QueryError::NotReady.into()),
+                Some(b) => axum_jrpc::JsonRpcResponse::success(answer_id, b),
             }
         }
         "getContractState" => {
@@ -113,7 +113,7 @@ async fn jrpc_router(
                 .get_contract_state(&request.address)
                 .and_then(make_existing_contract)
             {
-                Ok(account) => axum_jrpc::JsonRpcRepsonse::success(
+                Ok(account) => axum_jrpc::JsonRpcResponse::success(
                     answer_id,
                     account
                         .map(RawContractState::Exists)
@@ -121,7 +121,7 @@ async fn jrpc_router(
                 ),
                 Err(e) => {
                     log::error!("Failed to read account: {e:?}");
-                    axum_jrpc::JsonRpcRepsonse::error(
+                    axum_jrpc::JsonRpcResponse::error(
                         answer_id,
                         QueryError::InvalidAccountState.into(),
                     )
@@ -131,10 +131,10 @@ async fn jrpc_router(
         "getContractStateFull" => {
             let request: GetContractState = req.parse_params()?;
             match ctx.subscriber.get_contract_state(&request.address) {
-                Ok(account) => axum_jrpc::JsonRpcRepsonse::success(answer_id, account),
+                Ok(account) => axum_jrpc::JsonRpcResponse::success(answer_id, account),
                 Err(e) => {
                     log::error!("Failed to read account (full): {e:?}");
-                    axum_jrpc::JsonRpcRepsonse::error(
+                    axum_jrpc::JsonRpcResponse::error(
                         answer_id,
                         QueryError::InvalidAccountState.into(),
                     )
@@ -144,13 +144,13 @@ async fn jrpc_router(
         "sendMessage" => {
             let request: SendMessageRequest = req.parse_params()?;
             match ctx.engine.send_message(request.message).await {
-                Ok(_) => axum_jrpc::JsonRpcRepsonse::success(answer_id, ()),
-                Err(e) => axum_jrpc::JsonRpcRepsonse::error(answer_id, e.into()),
+                Ok(_) => axum_jrpc::JsonRpcResponse::success(answer_id, ()),
+                Err(e) => axum_jrpc::JsonRpcResponse::error(answer_id, e.into()),
             }
         }
         "status" => {
             let status = get_metrics(&ctx.engine);
-            axum_jrpc::JsonRpcRepsonse::success(answer_id, status)
+            axum_jrpc::JsonRpcResponse::success(answer_id, status)
         }
         m => req.method_not_found(m),
     };
