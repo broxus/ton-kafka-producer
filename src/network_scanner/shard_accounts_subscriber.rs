@@ -3,13 +3,11 @@ use std::hash::BuildHasherDefault;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use nekoton::transport::models::ExistingContract;
-use nekoton_abi::{GenTimings, LastTransactionId, TransactionId};
 use nekoton_indexer_utils::contains_account;
 use parking_lot::{Mutex, RwLock};
 use rustc_hash::FxHasher;
 use serde::Serialize;
-use ton_block::{Deserializable, HashmapAugType};
+use ton_block::{Deserializable, HashmapAugType, Serializable};
 use ton_indexer::utils::{BlockIdExtExtension, BlockStuff, RefMcStateHandle, ShardStateStuff};
 
 pub type FxHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
@@ -127,9 +125,17 @@ impl ShardAccountsSubscriber {
 pub struct ShardAccount {
     #[serde(with = "nekoton_utils::serde_cell")]
     data: ton_types::Cell,
-    last_transaction_id: LastTransactionId,
+    last_transaction_id: nekoton::abi::LastTransactionId,
     #[serde(skip)]
     _state_handle: Arc<RefMcStateHandle>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExistingContract {
+    pub account: String,
+    pub timings: nekoton::abi::GenTimings,
+    pub last_transaction_id: nekoton::abi::LastTransactionId,
 }
 
 pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<ExistingContract>> {
@@ -141,8 +147,8 @@ pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<Exis
     match ton_block::Account::construct_from_cell(state.data)? {
         ton_block::Account::AccountNone => Ok(None),
         ton_block::Account::Account(account) => Ok(Some(ExistingContract {
-            account,
-            timings: GenTimings::Unknown,
+            account: ton_types::serialize_toc(&account.serialize()?).map(base64::encode)?,
+            timings: nekoton::abi::GenTimings::Unknown,
             last_transaction_id: state.last_transaction_id,
         })),
     }
@@ -158,10 +164,12 @@ impl ShardAccounts {
         match self.accounts.get(account)? {
             Some(account) => Ok(Some(ShardAccount {
                 data: account.account_cell(),
-                last_transaction_id: LastTransactionId::Exact(TransactionId {
-                    lt: account.last_trans_lt(),
-                    hash: *account.last_trans_hash(),
-                }),
+                last_transaction_id: nekoton::abi::LastTransactionId::Exact(
+                    nekoton::abi::TransactionId {
+                        lt: account.last_trans_lt(),
+                        hash: *account.last_trans_hash(),
+                    },
+                ),
                 _state_handle: self.state_handle.clone(),
             })),
             None => Ok(None),

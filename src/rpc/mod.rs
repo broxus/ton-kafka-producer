@@ -6,7 +6,6 @@ use anyhow::Result;
 use axum::response::IntoResponse;
 use axum::{routing::post, Extension, Json};
 use http::StatusCode;
-use nekoton::transport::models::{ExistingContract, RawContractState};
 use nekoton_utils::*;
 use serde::{Deserialize, Serialize};
 
@@ -156,6 +155,14 @@ async fn jrpc_router(
     };
 
     Ok(answer)
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum RawContractState {
+    NotExists,
+    Exists(ExistingContract),
 }
 
 #[derive(Serialize)]

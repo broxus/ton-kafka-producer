@@ -349,12 +349,6 @@ impl std::fmt::Display for Metrics<'_> {
             .value(db.shard_state_storage.max_new_mc_cell_count)?;
         f.begin_metric("db_shard_state_storage_max_new_sc_cell_count")
             .value(db.shard_state_storage.max_new_sc_cell_count)?;
-        f.begin_metric("object_live")
-            .label("type", "storage_cell")
-            .value(db.storage_cell_live_count)?;
-        f.begin_metric("object_max_live")
-            .label("type", "storage_cell")
-            .value(db.storage_cell_max_live_count)?;
 
         // RocksDB
 
