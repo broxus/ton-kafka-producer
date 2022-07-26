@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -48,6 +48,16 @@ async fn run(app: App) -> Result<()> {
     tokio::spawn(memory_profiler());
     match config.scan_type {
         ScanType::FromNetwork { node_config } => {
+            let panicked = Arc::new(AtomicBool::default());
+            let orig_hook = std::panic::take_hook();
+            std::panic::set_hook({
+                let panicked = panicked.clone();
+                Box::new(move |panic_info| {
+                    panicked.store(true, Ordering::Release);
+                    orig_hook(panic_info);
+                })
+            });
+
             let global_config = ton_indexer::GlobalConfig::from_file(
                 &app.global_config.context("Global config not found")?,
             )
@@ -83,6 +93,7 @@ async fn run(app: App) -> Result<()> {
                     buf.write(Metrics {
                         rpc_metrics: &rpc_metrics,
                         engine: &engine,
+                        panicked: &panicked,
                     });
                 }
             });
@@ -193,10 +204,14 @@ fn init_logger(config: &serde_yaml::Value) -> Result<()> {
 struct Metrics<'a> {
     rpc_metrics: &'a rpc::Metrics,
     engine: &'a NetworkScanner,
+    panicked: &'a AtomicBool,
 }
 
 impl std::fmt::Display for Metrics<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let panicked = self.panicked.load(Ordering::Acquire) as u8;
+        f.begin_metric("panicked").value(panicked)?;
+
         let indexer = self.engine.indexer();
 
         // TON indexer
