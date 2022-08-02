@@ -80,11 +80,8 @@ async fn run(app: App) -> Result<()> {
             .await
             .context("Failed to create engine")?;
 
-            let (_exporter, metrics_writer) = pomfrit::create_exporter(Some(pomfrit::Config {
-                listen_address: config.metrics_path,
-                ..Default::default()
-            }))
-            .await?;
+            let (_exporter, metrics_writer) =
+                pomfrit::create_exporter(config.metrics_settings).await?;
 
             metrics_writer.spawn({
                 let rpc_metrics = rpc_metrics.clone();

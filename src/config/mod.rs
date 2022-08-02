@@ -9,13 +9,16 @@ use ton_indexer::OldBlocksPolicy;
 
 /// Main application config (full)
 #[derive(Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AppConfig {
     /// serve states
     #[serde(default)]
     pub rpc_config: Option<StatesConfig>,
 
-    #[serde(default = "default_metrics_path")]
-    pub metrics_path: SocketAddr,
+    /// Prometheus metrics exporter settings.
+    /// Completely disable when not specified
+    #[serde(default)]
+    pub metrics_settings: Option<pomfrit::Config>,
 
     /// Scan type
     pub scan_type: ScanType,
@@ -27,10 +30,6 @@ pub struct AppConfig {
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
     #[serde(default = "default_logger_settings")]
     pub logger_settings: serde_yaml::Value,
-}
-
-fn default_metrics_path() -> SocketAddr {
-    "0.0.0.0:12345".parse().unwrap()
 }
 
 #[allow(clippy::large_enum_variant)]

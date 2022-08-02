@@ -2,6 +2,13 @@ rpc_config:
   # States RPC endpoint
   address: "0.0.0.0:8081"
 
+metrics_settings:
+  # Listen address of metrics. Used by the client to gather prometheus metrics.
+  # Default: "127.0.0.1:10000"
+  listen_address: "0.0.0.0:10000"
+  # Metrics update interval in seconds. Default: 10
+  collection_interval_sec: 10
+
 scan_type:
   kind: FromNetwork
   node_config:
