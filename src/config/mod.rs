@@ -24,6 +24,7 @@ pub struct AppConfig {
     pub scan_type: ScanType,
 
     /// Kafka topics settings
+    #[serde(default)]
     pub kafka_settings: Option<KafkaConfig>,
 
     /// log4rs settings.
@@ -174,14 +175,19 @@ pub struct StatesConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "mode", rename_all = "camelCase")]
 pub enum KafkaConfig {
-    Broxus {
-        raw_transaction_producer: KafkaProducerConfig,
-    },
+    Broxus(BroxusKafkaConfig),
     Gql(GqlKafkaConfig),
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
+pub struct BroxusKafkaConfig {
+    /// Compressed raw transactions producer
+    pub raw_transaction_producer: KafkaProducerConfig,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct GqlKafkaConfig {
     /// Messages to send
     pub requests_consumer: Option<KafkaConsumerConfig>,
@@ -191,7 +197,7 @@ pub struct GqlKafkaConfig {
     pub raw_block_producer: Option<KafkaProducerConfig>,
     /// Parsed messages producer
     pub message_producer: Option<KafkaProducerConfig>,
-    /// Parsed transactions producers
+    /// Parsed transactions producer
     pub transaction_producer: Option<KafkaProducerConfig>,
     /// Account states producer
     pub account_producer: Option<KafkaProducerConfig>,

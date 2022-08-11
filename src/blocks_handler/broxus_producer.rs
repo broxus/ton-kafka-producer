@@ -12,10 +12,13 @@ pub struct BroxusProducer {
 }
 
 impl BroxusProducer {
-    pub fn new(config: KafkaProducerConfig) -> Result<Self> {
+    pub fn new(config: BroxusKafkaConfig) -> Result<Self> {
         Ok(Self {
             compressor: Default::default(),
-            raw_transaction_producer: KafkaProducer::new(config, Partitions::Fixed(0..=8))?,
+            raw_transaction_producer: KafkaProducer::new(
+                config.raw_transaction_producer,
+                Partitions::Fixed(0..=8),
+            )?,
         })
     }
 
