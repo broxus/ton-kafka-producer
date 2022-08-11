@@ -120,10 +120,14 @@ async fn run(app: App) -> Result<()> {
             futures_util::future::pending().await
         }
         ScanType::FromArchives { list_path } => {
-            let scanner = ArchivesScanner::new(config.kafka_settings, list_path)
-                .context("Failed to create scanner")?;
+            if let Some(config) = config.kafka_settings {
+                let scanner =
+                    ArchivesScanner::new(config, list_path).context("Failed to create scanner")?;
 
-            scanner.run().await.context("Failed to scan archives")
+                scanner.run().await.context("Failed to scan archives")
+            } else {
+                panic!("No kafka settings provided for archives scan");
+            }
         }
     }
 }

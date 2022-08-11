@@ -7,7 +7,7 @@ use super::kafka_producer::*;
 use crate::config::*;
 
 pub struct BroxusProducer {
-    compressor: ton_block_compressor::ZstdWrapper,
+    compressor: ZstdWrapper,
     raw_transaction_producer: KafkaProducer,
 }
 

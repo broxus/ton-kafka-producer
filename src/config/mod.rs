@@ -24,7 +24,7 @@ pub struct AppConfig {
     pub scan_type: ScanType,
 
     /// Kafka topics settings
-    pub kafka_settings: KafkaConfig,
+    pub kafka_settings: Option<KafkaConfig>,
 
     /// log4rs settings.
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
@@ -174,9 +174,7 @@ pub struct StatesConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "mode", rename_all = "camelCase")]
 pub enum KafkaConfig {
-    Broxus {
-        raw_transaction_producer: KafkaProducerConfig,
-    },
+    Broxus(KafkaProducerConfig),
     Gql(GqlKafkaConfig),
 }
 

@@ -21,14 +21,14 @@ pub struct NetworkScanner {
 
 impl NetworkScanner {
     pub async fn new(
-        kafka_settings: KafkaConfig,
+        kafka_settings: Option<KafkaConfig>,
         node_settings: NodeConfig,
         global_config: ton_indexer::GlobalConfig,
         shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
     ) -> Result<Arc<Self>> {
         let requests_consumer_config = match &kafka_settings {
-            KafkaConfig::Gql(gql) => gql.requests_consumer.clone(),
-            KafkaConfig::Broxus { .. } => None,
+            Some(KafkaConfig::Gql(gql)) => gql.requests_consumer.clone(),
+            _ => None,
         };
 
         let subscriber: Arc<dyn ton_indexer::Subscriber> =
@@ -100,10 +100,10 @@ struct TonSubscriber {
 
 impl TonSubscriber {
     fn new(
-        config: KafkaConfig,
+        config: Option<KafkaConfig>,
         shard_accounts_subscriber: Arc<ShardAccountsSubscriber>,
     ) -> Result<Arc<Self>> {
-        let extract_all = matches!(&config, KafkaConfig::Gql(_));
+        let extract_all = matches!(&config, Some(KafkaConfig::Gql(_)));
 
         Ok(Arc::new(Self {
             handler: BlocksHandler::new(config)?,

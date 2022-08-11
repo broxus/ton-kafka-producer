@@ -13,15 +13,17 @@ mod kafka_producer;
 pub enum BlocksHandler {
     Broxus(BroxusProducer),
     Gql(GqlProducer),
+    None,
 }
 
 impl BlocksHandler {
-    pub fn new(config: KafkaConfig) -> Result<Self> {
+    pub fn new(config: Option<KafkaConfig>) -> Result<Self> {
         match config {
-            KafkaConfig::Broxus {
-                raw_transaction_producer,
-            } => BroxusProducer::new(raw_transaction_producer).map(Self::Broxus),
-            KafkaConfig::Gql(config) => GqlProducer::new(config).map(Self::Gql),
+            Some(KafkaConfig::Broxus(raw_transaction_producer)) => {
+                BroxusProducer::new(raw_transaction_producer).map(Self::Broxus)
+            }
+            Some(KafkaConfig::Gql(config)) => GqlProducer::new(config).map(Self::Gql),
+            None => Ok(Self::None),
         }
     }
 
@@ -52,6 +54,7 @@ impl BlocksHandler {
                     .handle_block(block_stuff, block_data, block_proof, shard_state)
                     .await
             }
+            Self::None => Ok(()),
         }
     }
 }
