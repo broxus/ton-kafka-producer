@@ -22,7 +22,7 @@ impl ArchivesScanner {
         let list = std::fs::read_to_string(list_path)?;
 
         Ok(Self {
-            handler: Arc::new(BlocksHandler::new(config)?),
+            handler: Arc::new(BlocksHandler::new(Some(config))?),
             list,
         })
     }

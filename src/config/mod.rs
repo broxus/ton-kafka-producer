@@ -24,7 +24,7 @@ pub struct AppConfig {
     pub scan_type: ScanType,
 
     /// Kafka topics settings
-    pub kafka_settings: KafkaConfig,
+    pub kafka_settings: Option<KafkaConfig>,
 
     /// log4rs settings.
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
