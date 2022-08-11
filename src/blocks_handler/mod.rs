@@ -19,9 +19,9 @@ pub enum BlocksHandler {
 impl BlocksHandler {
     pub fn new(config: Option<KafkaConfig>) -> Result<Self> {
         match config {
-            Some(KafkaConfig::Broxus(raw_transaction_producer)) => {
-                BroxusProducer::new(raw_transaction_producer).map(Self::Broxus)
-            }
+            Some(KafkaConfig::Broxus {
+                raw_transaction_producer,
+            }) => BroxusProducer::new(raw_transaction_producer).map(Self::Broxus),
             Some(KafkaConfig::Gql(config)) => GqlProducer::new(config).map(Self::Gql),
             None => Ok(Self::None),
         }

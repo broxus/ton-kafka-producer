@@ -174,7 +174,9 @@ pub struct StatesConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "mode", rename_all = "camelCase")]
 pub enum KafkaConfig {
-    Broxus(KafkaProducerConfig),
+    Broxus {
+        raw_transaction_producer: KafkaProducerConfig,
+    },
     Gql(GqlKafkaConfig),
 }
 
