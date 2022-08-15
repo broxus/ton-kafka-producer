@@ -7,8 +7,6 @@ edition = "2021"
 anyhow = "1.0"
 argh = "0.1"
 async-trait = "0.1"
-axum = {version= "0.5.4", features= ["http2"] }
-axum-jrpc = "0.2"
 base64 = "0.13"
 chrono = "0.4"
 config = { version = "0.13", default-features = false, features = ["yaml"] }
@@ -16,12 +14,10 @@ countme = { version = "3.0.0", features = ["enable"] }
 everscale-network = "0.3.2"
 futures-util = "0.3"
 hex = "0.4"
-http = "0.2.6"
 indicatif = "0.17.0-rc.9"
 log = "0.4"
 log4rs = "1.0"
 once_cell = "1.10.0"
-parking_lot = "0.12.0"
 pomfrit = "0.1"
 public-ip = "0.2"
 rand = "0.8"
@@ -33,8 +29,6 @@ serde_json = "1.0"
 serde_yaml = "0.8"
 thiserror = "1.0"
 tokio = { version = "1.17.0", features = ["full", "parking_lot"] }
-tower = "0.4.12"
-tower-http = { version = "0.3.0", features = ["compression-gzip"] }
 
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }
@@ -42,11 +36,9 @@ ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor" }
 
-nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
-nekoton-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
-nekoton-indexer-utils = { git = "https://github.com/broxus/nekoton.git", default-features = false }
-
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = ["count-cells"] }
+
+everscale-jrpc-server = { git = "https://github.com/broxus/everscale-jrpc.git" }
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }

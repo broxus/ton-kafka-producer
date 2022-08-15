@@ -3,15 +3,14 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use argh::FromArgs;
+use everscale_jrpc_server::{JrpcServer, JrpcState};
 use pomfrit::formatter::*;
 use serde::Deserialize;
 use tokio::signal::unix;
 
 use ton_kafka_producer::archive_scanner::*;
 use ton_kafka_producer::config::*;
-use ton_kafka_producer::network_scanner::shard_accounts_subscriber::ShardAccountsSubscriber;
 use ton_kafka_producer::network_scanner::*;
-use ton_kafka_producer::rpc;
 
 #[global_allocator]
 static GLOBAL: ton_indexer::alloc::Allocator = ton_indexer::alloc::allocator();
@@ -67,15 +66,13 @@ async fn run(app: App) -> Result<()> {
 
             log::info!("Initializing producer...");
 
-            let (shard_accounts_subscriber, current_key_block) = ShardAccountsSubscriber::new();
-
-            let rpc_metrics = Arc::new(rpc::Metrics::default());
+            let jrpc_state = Arc::new(JrpcState::default());
 
             let engine = NetworkScanner::new(
                 config.kafka_settings,
                 node_config,
                 global_config,
-                shard_accounts_subscriber.clone(),
+                jrpc_state.clone(),
             )
             .await
             .context("Failed to create engine")?;
@@ -84,11 +81,11 @@ async fn run(app: App) -> Result<()> {
                 pomfrit::create_exporter(config.metrics_settings).await?;
 
             metrics_writer.spawn({
-                let rpc_metrics = rpc_metrics.clone();
+                let jrpc_state = jrpc_state.clone();
                 let engine = engine.clone();
                 move |buf| {
                     buf.write(Metrics {
-                        rpc_metrics: &rpc_metrics,
+                        jrpc_state: &jrpc_state,
                         engine: &engine,
                         panicked: &panicked,
                     });
@@ -97,22 +94,13 @@ async fn run(app: App) -> Result<()> {
             log::info!("Initialized exporter");
 
             engine.start().await.context("Failed to start engine")?;
-            {
-                let last_key_block = engine.indexer().load_last_key_block().await?;
-                let mut current_key_block = current_key_block.lock();
-                if current_key_block.is_none() {
-                    *current_key_block = Some(last_key_block.into_block());
-                }
-            }
             log::info!("Initialized engine");
 
             if let Some(config) = config.rpc_config {
-                tokio::spawn(rpc::serve(
-                    shard_accounts_subscriber,
-                    config.address,
-                    rpc_metrics,
-                    engine,
-                ));
+                let jrpc = JrpcServer::with_state(jrpc_state)
+                    .build(engine.indexer(), config.address)
+                    .await?;
+                tokio::spawn(jrpc);
                 log::info!("Initialized RPC");
             }
 
@@ -132,7 +120,7 @@ async fn run(app: App) -> Result<()> {
     }
 }
 
-#[derive(Debug, PartialEq, FromArgs)]
+#[derive(Debug, FromArgs)]
 #[argh(description = "A simple service to stream TON data into Kafka")]
 struct App {
     /// path to config file ('config.yaml' by default)
@@ -203,7 +191,7 @@ fn init_logger(config: &serde_yaml::Value) -> Result<()> {
 }
 
 struct Metrics<'a> {
-    rpc_metrics: &'a rpc::Metrics,
+    jrpc_state: &'a JrpcState,
     engine: &'a NetworkScanner,
     panicked: &'a AtomicBool,
 }
@@ -325,12 +313,10 @@ impl std::fmt::Display for Metrics<'_> {
 
         // RPC
 
-        f.begin_metric("rpc_requests_processed")
-            .value(self.rpc_metrics.requests_processed.load(Ordering::Acquire))?;
-        f.begin_metric("rpc_errors")
-            .value(self.rpc_metrics.errors.load(Ordering::Acquire))?;
-        f.begin_metric("jrpc_requests_processed")
-            .value(self.rpc_metrics.jrpc_requests.load(Ordering::Acquire))?;
+        let jrpc = self.jrpc_state.metrics();
+        f.begin_metric("jrpc_total").value(jrpc.total)?;
+        f.begin_metric("jrpc_errors").value(jrpc.errors)?;
+        f.begin_metric("jrpc_not_found").value(jrpc.not_found)?;
 
         // jemalloc
 
