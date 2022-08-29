@@ -3,28 +3,20 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use argh::FromArgs;
+use broxus_util::alloc::profiling;
+use everscale_jrpc_server::{JrpcServer, JrpcState};
 use pomfrit::formatter::*;
-use serde::Deserialize;
-use tokio::signal::unix;
 
 use ton_kafka_producer::archive_scanner::*;
 use ton_kafka_producer::config::*;
-use ton_kafka_producer::network_scanner::shard_accounts_subscriber::ShardAccountsSubscriber;
 use ton_kafka_producer::network_scanner::*;
-use ton_kafka_producer::rpc;
 
 #[global_allocator]
-static GLOBAL: ton_indexer::alloc::Allocator = ton_indexer::alloc::allocator();
+static GLOBAL: broxus_util::alloc::Allocator = ton_indexer::alloc::allocator();
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let any_signal = any_signal([
-        unix::SignalKind::interrupt(),
-        unix::SignalKind::terminate(),
-        unix::SignalKind::quit(),
-        unix::SignalKind::from_raw(6),  // SIGABRT/SIGIOT
-        unix::SignalKind::from_raw(20), // SIGTSTP
-    ]);
+    let any_signal = broxus_util::any_signal(broxus_util::TERMINATION_SIGNALS);
 
     let run = run(argh::from_env());
 
@@ -42,7 +34,7 @@ async fn main() -> Result<()> {
 }
 
 async fn run(app: App) -> Result<()> {
-    let config: AppConfig = read_config(app.config)?;
+    let config: AppConfig = broxus_util::read_config(app.config)?;
     countme::enable(true);
 
     tokio::spawn(memory_profiler());
@@ -63,19 +55,17 @@ async fn run(app: App) -> Result<()> {
             )
             .context("Failed to open global config")?;
 
-            init_logger(&config.logger_settings).context("Failed to init logger")?;
+            broxus_util::init_logger(&config.logger_settings).context("Failed to init logger")?;
 
             log::info!("Initializing producer...");
 
-            let (shard_accounts_subscriber, current_key_block) = ShardAccountsSubscriber::new();
-
-            let rpc_metrics = Arc::new(rpc::Metrics::default());
+            let jrpc_state = Arc::new(JrpcState::default());
 
             let engine = NetworkScanner::new(
                 config.kafka_settings,
                 node_config,
                 global_config,
-                shard_accounts_subscriber.clone(),
+                jrpc_state.clone(),
             )
             .await
             .context("Failed to create engine")?;
@@ -84,11 +74,11 @@ async fn run(app: App) -> Result<()> {
                 pomfrit::create_exporter(config.metrics_settings).await?;
 
             metrics_writer.spawn({
-                let rpc_metrics = rpc_metrics.clone();
+                let jrpc_state = jrpc_state.clone();
                 let engine = engine.clone();
                 move |buf| {
                     buf.write(Metrics {
-                        rpc_metrics: &rpc_metrics,
+                        jrpc_state: &jrpc_state,
                         engine: &engine,
                         panicked: &panicked,
                     });
@@ -97,22 +87,13 @@ async fn run(app: App) -> Result<()> {
             log::info!("Initialized exporter");
 
             engine.start().await.context("Failed to start engine")?;
-            {
-                let last_key_block = engine.indexer().load_last_key_block().await?;
-                let mut current_key_block = current_key_block.lock();
-                if current_key_block.is_none() {
-                    *current_key_block = Some(last_key_block.into_block());
-                }
-            }
             log::info!("Initialized engine");
 
             if let Some(config) = config.rpc_config {
-                tokio::spawn(rpc::serve(
-                    shard_accounts_subscriber,
-                    config.address,
-                    rpc_metrics,
-                    engine,
-                ));
+                let jrpc = JrpcServer::with_state(jrpc_state)
+                    .build(engine.indexer(), config.address)
+                    .await?;
+                tokio::spawn(jrpc);
                 log::info!("Initialized RPC");
             }
 
@@ -132,7 +113,7 @@ async fn run(app: App) -> Result<()> {
     }
 }
 
-#[derive(Debug, PartialEq, FromArgs)]
+#[derive(Debug, FromArgs)]
 #[argh(description = "A simple service to stream TON data into Kafka")]
 struct App {
     /// path to config file ('config.yaml' by default)
@@ -144,66 +125,8 @@ struct App {
     global_config: Option<String>,
 }
 
-fn any_signal<I>(signals: I) -> tokio::sync::oneshot::Receiver<unix::SignalKind>
-where
-    I: IntoIterator<Item = unix::SignalKind>,
-{
-    let (tx, rx) = tokio::sync::oneshot::channel();
-
-    let any_signal = futures_util::future::select_all(signals.into_iter().map(|signal| {
-        Box::pin(async move {
-            unix::signal(signal)
-                .expect("Failed subscribing on unix signals")
-                .recv()
-                .await;
-            signal
-        })
-    }));
-
-    tokio::spawn(async move {
-        let signal = any_signal.await.0;
-        tx.send(signal).ok();
-    });
-
-    rx
-}
-
-fn read_config<P, T>(path: P) -> Result<T>
-where
-    P: AsRef<std::path::Path>,
-    for<'de> T: Deserialize<'de>,
-{
-    let data = std::fs::read_to_string(path).context("Failed to read config")?;
-    let re = regex::Regex::new(r"\$\{([a-zA-Z_][0-9a-zA-Z_]*)\}").unwrap();
-    let result = re.replace_all(&data, |caps: &regex::Captures| {
-        match std::env::var(&caps[1]) {
-            Ok(value) => value,
-            Err(_) => {
-                log::warn!("Environment variable {} was not set", &caps[1]);
-                String::default()
-            }
-        }
-    });
-
-    config::Config::builder()
-        .add_source(config::File::from_str(
-            result.as_ref(),
-            config::FileFormat::Yaml,
-        ))
-        .build()
-        .context("Failed to load config")?
-        .try_deserialize()
-        .context("Failed to parse config")
-}
-
-fn init_logger(config: &serde_yaml::Value) -> Result<()> {
-    let config = serde_yaml::from_value(config.clone())?;
-    log4rs::config::init_raw_config(config)?;
-    Ok(())
-}
-
 struct Metrics<'a> {
-    rpc_metrics: &'a rpc::Metrics,
+    jrpc_state: &'a JrpcState,
     engine: &'a NetworkScanner,
     panicked: &'a AtomicBool,
 }
@@ -325,16 +248,14 @@ impl std::fmt::Display for Metrics<'_> {
 
         // RPC
 
-        f.begin_metric("rpc_requests_processed")
-            .value(self.rpc_metrics.requests_processed.load(Ordering::Acquire))?;
-        f.begin_metric("rpc_errors")
-            .value(self.rpc_metrics.errors.load(Ordering::Acquire))?;
-        f.begin_metric("jrpc_requests_processed")
-            .value(self.rpc_metrics.jrpc_requests.load(Ordering::Acquire))?;
+        let jrpc = self.jrpc_state.metrics();
+        f.begin_metric("jrpc_total").value(jrpc.total)?;
+        f.begin_metric("jrpc_errors").value(jrpc.errors)?;
+        f.begin_metric("jrpc_not_found").value(jrpc.not_found)?;
 
         // jemalloc
 
-        let ton_indexer::alloc::JemallocStats {
+        let profiling::JemallocStats {
             allocated,
             active,
             metadata,
@@ -343,8 +264,8 @@ impl std::fmt::Display for Metrics<'_> {
             retained,
             dirty,
             fragmentation,
-        } = ton_indexer::alloc::fetch_stats().map_err(|e| {
-            log::error!("Failed to fetch allocator stats: {}", e);
+        } = profiling::fetch_stats().map_err(|e| {
+            log::error!("Failed to fetch allocator stats: {e:?}");
             std::fmt::Error
         })?;
 
@@ -375,7 +296,7 @@ impl std::fmt::Display for Metrics<'_> {
             compressed_block_cache_usage,
             compressed_block_cache_pined_usage,
         } = indexer.get_memory_usage_stats().map_err(|e| {
-            log::error!("Failed to fetch rocksdb stats: {}", e);
+            log::error!("Failed to fetch rocksdb stats: {e:?}");
             std::fmt::Error
         })?;
 
@@ -399,26 +320,27 @@ impl std::fmt::Display for Metrics<'_> {
 }
 
 async fn memory_profiler() {
-    use ton_indexer::alloc;
+    use tokio::signal::unix;
 
     let signal = unix::SignalKind::user_defined1();
     let mut stream = unix::signal(signal).expect("failed to create signal stream");
     let path = std::env::var("MEMORY_PROFILER_PATH").unwrap_or_else(|_| "memory.prof".to_string());
+
     let mut is_active = false;
     while stream.recv().await.is_some() {
         log::info!("Memory profiler signal received");
         if !is_active {
             log::info!("Activating memory profiler");
-            if let Err(e) = alloc::activate_prof() {
+            if let Err(e) = profiling::start() {
                 log::error!("Failed to activate memory profiler: {}", e);
             }
         } else {
             let invocation_time = chrono::Local::now();
             let path = format!("{}_{}", path, invocation_time.format("%Y-%m-%d_%H-%M-%S"));
-            if let Err(e) = alloc::dump_prof(&path) {
+            if let Err(e) = profiling::dump(&path) {
                 log::error!("Failed to dump prof: {:?}", e);
             }
-            if let Err(e) = alloc::deactivate_prof() {
+            if let Err(e) = profiling::stop() {
                 log::error!("Failed to deactivate memory profiler: {}", e);
             }
         }

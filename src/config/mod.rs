@@ -78,6 +78,9 @@ pub struct NodeConfig {
     /// Archives map queue. Default: 16
     pub parallel_archive_downloads: usize,
 
+    /// Archives GC and uploader options
+    pub archive_options: Option<ton_indexer::ArchiveOptions>,
+
     pub start_from: Option<u32>,
 
     #[serde(default)]
@@ -95,12 +98,7 @@ pub struct NodeConfig {
 impl NodeConfig {
     pub async fn build_indexer_config(self) -> Result<ton_indexer::NodeConfig> {
         // Determine public ip
-        let ip_address = match self.adnl_public_ip {
-            Some(address) => address,
-            None => public_ip::addr_v4()
-                .await
-                .ok_or(ConfigError::PublicIpNotFound)?,
-        };
+        let ip_address = broxus_util::resolve_public_ip(self.adnl_public_ip).await?;
         log::info!("Using public ip: {}", ip_address);
 
         // Generate temp keys
@@ -132,7 +130,7 @@ impl NodeConfig {
             }),
             shard_state_cache_options: None, // until state cache GC will be improved
             max_db_memory_usage: self.max_db_memory_usage,
-            archive_options: Some(Default::default()),
+            archive_options: self.archive_options,
             sync_options: ton_indexer::SyncOptions {
                 old_blocks_policy,
                 parallel_archive_downloads: self.parallel_archive_downloads,
@@ -156,6 +154,7 @@ impl Default for NodeConfig {
             temp_keys_path: "adnl-keys.json".into(),
             max_db_memory_usage: ton_indexer::default_max_db_memory_usage(),
             parallel_archive_downloads: 16,
+            archive_options: Some(Default::default()),
             start_from: None,
             adnl_options: Default::default(),
             rldp_options: Default::default(),
@@ -294,10 +293,4 @@ fn default_logger_settings() -> serde_yaml::Value {
         additive: false
     "##;
     serde_yaml::from_str(DEFAULT_LOG4RS_SETTINGS).unwrap()
-}
-
-#[derive(thiserror::Error, Debug)]
-enum ConfigError {
-    #[error("Failed to find public ip")]
-    PublicIpNotFound,
 }

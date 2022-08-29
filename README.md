@@ -52,6 +52,16 @@ scan_type:
     # Archives map queue. Default: 16
     parallel_archive_downloads: 32
 
+    # archive_options:
+    #   # Archives S3 uploader options
+    #   uploader_options:
+    #     name: ""
+    #     endpoint: "http://127.0.0.1:9000"
+    #     bucket: "archives"
+    #     credentials:
+    #       access_key: "example_key"
+    #       secret_key: "example_password"
+
     # # Specific block from which to run the indexer
     # start_from: 12365000
 

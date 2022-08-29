@@ -414,7 +414,7 @@ fn construct_address(
     workchain_id: i32,
     account_id: ton_types::AccountId,
 ) -> Result<ton_block::MsgAddressInt> {
-    if workchain_id <= 127 && workchain_id >= -128 && account_id.remaining_bits() == 256 {
+    if (-128..=127).contains(&workchain_id) && account_id.remaining_bits() == 256 {
         ton_block::MsgAddressInt::with_standart(None, workchain_id as i8, account_id)
     } else {
         ton_block::MsgAddressInt::with_variant(None, workchain_id, account_id)
