@@ -134,7 +134,7 @@ enum MessageBroadcastError {
     InvalidBoc(#[source] anyhow::Error),
     #[error("External message must have zero level (message level: {0})")]
     InvalidLevel(u8),
-    #[error("External message {:x} is too deep (depth: {0})")]
+    #[error("External message is too deep (depth: {0})")]
     TooDeep(u16),
     #[error("Invalid message")]
     InvalidMessage(#[source] anyhow::Error),
