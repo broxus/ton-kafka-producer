@@ -251,6 +251,8 @@ pub enum SecurityConfig {
 pub struct SaslConfig {
     pub security_protocol: String,
     pub ssl_ca_location: String,
+    pub ssl_keystore_location: String,
+    pub ssl_keystore_password: String,
     pub sasl_mechanism: String,
     pub sasl_username: String,
     pub sasl_password: String,

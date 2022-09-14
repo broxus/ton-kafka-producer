@@ -29,6 +29,8 @@ impl MessageConsumer {
             client_config
                 .set("security.protocol", &sasl.security_protocol)
                 .set("ssl.ca.location", &sasl.ssl_ca_location)
+                .set("ssl.keystore.location", &sasl.ssl_keystore_location)
+                .set("ssl.keystore.password", &sasl.ssl_keystore_password)
                 .set("sasl.mechanism", &sasl.sasl_mechanism)
                 .set("sasl.username", &sasl.sasl_username)
                 .set("sasl.password", &sasl.sasl_password);
