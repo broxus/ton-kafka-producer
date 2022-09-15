@@ -36,7 +36,8 @@ ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor" 
 
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = ["count-cells", "archive-uploader"] }
 
-everscale-jrpc-server = { git = "https://github.com/broxus/everscale-jrpc.git" }
+everscale-jrpc-server = { path = "../everscale-jrpc/server", features = ['streaming'] }
+tonic = "0.8.1"
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }

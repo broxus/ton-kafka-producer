@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use everscale_jrpc_server::JrpcState;
+use everscale_jrpc_server::grpc::GrpcService;
 use ton_indexer::utils::*;
 use ton_indexer::ProcessBlockContext;
 
-use self::message_consumer::*;
 use crate::blocks_handler::*;
 use crate::config::*;
+
+use self::message_consumer::*;
 
 mod message_consumer;
 
@@ -21,7 +22,7 @@ impl NetworkScanner {
         kafka_settings: Option<KafkaConfig>,
         node_settings: NodeConfig,
         global_config: ton_indexer::GlobalConfig,
-        jrpc_state: Arc<JrpcState>,
+        jrpc_state: GrpcService,
     ) -> Result<Arc<Self>> {
         let requests_consumer_config = match &kafka_settings {
             Some(KafkaConfig::Gql(gql)) => gql.requests_consumer.clone(),
@@ -72,12 +73,12 @@ impl NetworkScanner {
 
 struct BlocksSubscriber {
     handler: BlocksHandler,
-    jrpc_state: Arc<JrpcState>,
+    jrpc_state: GrpcService,
     extract_all: bool,
 }
 
 impl BlocksSubscriber {
-    fn new(config: Option<KafkaConfig>, jrpc_state: Arc<JrpcState>) -> Result<Arc<Self>> {
+    fn new(config: Option<KafkaConfig>, jrpc_state: GrpcService) -> Result<Arc<Self>> {
         let extract_all = matches!(&config, Some(KafkaConfig::Gql(_)));
 
         Ok(Arc::new(Self {
@@ -96,11 +97,10 @@ impl BlocksSubscriber {
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
     ) -> Result<()> {
-        if let Some(shard_state) = shard_state {
-            self.jrpc_state
-                .handle_block(block_stuff, shard_state)
-                .context("Failed to update JRPC state")?;
-        }
+        self.jrpc_state
+            .handle_block(block_stuff, shard_state)
+            .await
+            .context("Failed to update JRPC state")?;
 
         self.handler
             .handle_block(block_stuff, block_data, block_proof, shard_state, true)

@@ -4,8 +4,9 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use argh::FromArgs;
 use broxus_util::alloc::profiling;
-use everscale_jrpc_server::{JrpcServer, JrpcState};
+use everscale_jrpc_server::JrpcState;
 use pomfrit::formatter::*;
+use tonic::transport::Server;
 
 use ton_kafka_producer::archive_scanner::*;
 use ton_kafka_producer::config::*;
@@ -60,12 +61,14 @@ async fn run(app: App) -> Result<()> {
             log::info!("Initializing producer...");
 
             let jrpc_state = Arc::new(JrpcState::default());
+            let svc = everscale_jrpc_server::RpcSvc::new(jrpc_state.clone())?
+                .build_with_streaming("db.sqlite3")?;
 
             let engine = NetworkScanner::new(
                 config.kafka_settings,
                 node_config,
                 global_config,
-                jrpc_state.clone(),
+                svc.clone(),
             )
             .await
             .context("Failed to create engine")?;
@@ -90,11 +93,14 @@ async fn run(app: App) -> Result<()> {
             log::info!("Initialized engine");
 
             if let Some(config) = config.rpc_config {
-                let jrpc = JrpcServer::with_state(jrpc_state)
-                    .build(engine.indexer(), config.address)
+                // how to test
+                // `grpcurl  -proto rpc.proto  -vv  -plaintext  -d  '{    "time":1662935971 }' 0.0.0.0:8081 rpc.Stream/GetTransaction`
+                Server::builder()
+                    .add_service(everscale_jrpc_server::RpcServer::new(svc.clone()))
+                    .add_service(everscale_jrpc_server::StreamServer::new(svc))
+                    .serve(config.address)
                     .await?;
-                tokio::spawn(jrpc);
-                log::info!("Initialized RPC");
+                log::info!("Initialized RPC on {}", config.address);
             }
 
             log::info!("Initialized producer");
