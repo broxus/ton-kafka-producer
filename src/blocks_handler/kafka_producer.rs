@@ -53,6 +53,13 @@ impl KafkaProducer {
                 .set("sasl.mechanism", &sasl.sasl_mechanism)
                 .set("sasl.username", &sasl.sasl_username)
                 .set("sasl.password", &sasl.sasl_password);
+
+            if let Some(ssl_keystore_location) = sasl.ssl_keystore_location.clone() {
+                client_config.set("ssl.keystore.location", ssl_keystore_location);
+            }
+            if let Some(ssl_keystore_password) = sasl.ssl_keystore_password.clone() {
+                client_config.set("ssl.keystore.password", ssl_keystore_password);
+            }
         }
 
         let producer = client_config.create()?;
