@@ -35,6 +35,12 @@ metrics_settings:
   # Metrics update interval in seconds. Default: 10
   collection_interval_sec: 10
 
+# # Scan from local archives
+# scan_type:
+#   kind: FromArchives
+#   # Example how to prepare: `find path/to/archives > path/to/archives_list`
+#   list_path: path/to/archives_list
+
 scan_type:
   kind: FromNetwork
   node_config:
@@ -136,32 +142,3 @@ logger_settings:
         - stdout
       additive: false
 ```
-
-### States RPC
-
-Endpoint: `http://0.0.0.0:8081` (can be configured by `rpc_config.address`)
-
-- POST `/account`
-  ```typescript
-  type Request = {
-    // Address of the contract in format `(?:-1|0):[0-9a-fA-F]{64}`
-    address: string,
-  };
-  
-  type Response = {
-    // BOC encoded `ton_block::AccountStuff`
-    account: string,
-    timings: {
-      // Shard state lt
-      genLt: string,
-      // Shard state utime
-      genUtime: number,
-    },
-    lastTransactionId: {
-      // Account last transaction lt
-      lt: string,
-      // Account last transaction hash in format `[0-9a-f]{64}`
-      hash: string,
-    }
-  } | null;
-  ```
