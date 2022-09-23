@@ -52,7 +52,7 @@ checksum = "983cd8b9d4b02a6dc6ffa557262eb5858a27a0038ffffe21a0f133eaa819a164"
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#1add4685e728b39e48e29b5014b38dc025143fde"
+source = "git+https://github.com/broxus/ton-indexer.git#0422839141989ed5ed39fd7717587ec1b76816de"
 dependencies = [
  "anyhow",
  "base64",
@@ -1013,7 +1013,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#1add4685e728b39e48e29b5014b38dc025143fde"
+source = "git+https://github.com/broxus/ton-indexer.git#0422839141989ed5ed39fd7717587ec1b76816de"
 dependencies = [
  "anyhow",
  "base64",
@@ -2745,7 +2745,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#1add4685e728b39e48e29b5014b38dc025143fde"
+source = "git+https://github.com/broxus/ton-indexer.git#0422839141989ed5ed39fd7717587ec1b76816de"
 dependencies = [
  "anyhow",
  "arc-swap",
