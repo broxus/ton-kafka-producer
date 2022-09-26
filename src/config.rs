@@ -45,6 +45,7 @@ pub enum ScanType {
     FromArchives {
         list_path: PathBuf,
     },
+    FromS3(S3ScannerConfig),
 }
 
 impl Default for ScanType {
@@ -163,6 +164,21 @@ impl Default for NodeConfig {
             overlay_shard_options: Default::default(),
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct S3ScannerConfig {
+    /// Archive downloader config
+    pub s3_config: archive_downloader::ArchiveDownloaderConfig,
+
+    /// Whether to retry block handler in case of error
+    #[serde(default = "default_retry_on_error")]
+    pub retry_on_error: bool,
+}
+
+fn default_retry_on_error() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Deserialize)]

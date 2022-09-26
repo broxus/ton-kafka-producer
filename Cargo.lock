@@ -50,9 +50,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "983cd8b9d4b02a6dc6ffa557262eb5858a27a0038ffffe21a0f133eaa819a164"
 
 [[package]]
+name = "archive-downloader"
+version = "0.1.0"
+source = "git+https://github.com/broxus/ton-indexer.git#a15eb4be8c237e0aa6946eee3daed414ef6cd151"
+dependencies = [
+ "anyhow",
+ "futures-util",
+ "log",
+ "pin-project-lite",
+ "rusoto_core",
+ "rusoto_credential",
+ "rusoto_s3",
+ "rusoto_signature",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#0422839141989ed5ed39fd7717587ec1b76816de"
+source = "git+https://github.com/broxus/ton-indexer.git#a15eb4be8c237e0aa6946eee3daed414ef6cd151"
 dependencies = [
  "anyhow",
  "base64",
@@ -1013,7 +1030,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#0422839141989ed5ed39fd7717587ec1b76816de"
+source = "git+https://github.com/broxus/ton-indexer.git#a15eb4be8c237e0aa6946eee3daed414ef6cd151"
 dependencies = [
  "anyhow",
  "base64",
@@ -1179,9 +1196,9 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.49"
+version = "0.1.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bbaead50122b06e9a973ac20bc7445074d99ad9a0a0654934876908a9cec82c"
+checksum = "fd911b35d940d2bd0bea0f9100068e5b97b51a1cbe13d13382f132e0365257a0"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
@@ -1279,9 +1296,9 @@ checksum = "6c8af84674fe1f223a982c933a0ee1086ac4d4052aa0fb8060c12c6ad838e754"
 
 [[package]]
 name = "jobserver"
-version = "0.1.24"
+version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af25a77299a7f711a01975c35a6a424eb6862092cc2d6c72c4ed6cbc56dfc1fa"
+checksum = "068b1ee6743e4d11fb9c6a1e6064b3693a1b600e7f5f5988047d98b3dc9fb90b"
 dependencies = [
  "libc",
 ]
@@ -1498,7 +1515,7 @@ dependencies = [
 [[package]]
 name = "nekoton-abi"
 version = "0.11.0"
-source = "git+https://github.com/broxus/nekoton.git#793579c5c1ff00dc04f38f8deb3d76363330b4cf"
+source = "git+https://github.com/broxus/nekoton.git#f87b03ffa8b6ca032993cffe740260816ad8da50"
 dependencies = [
  "anyhow",
  "base64",
@@ -1523,7 +1540,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.11.0"
-source = "git+https://github.com/broxus/nekoton.git#793579c5c1ff00dc04f38f8deb3d76363330b4cf"
+source = "git+https://github.com/broxus/nekoton.git#f87b03ffa8b6ca032993cffe740260816ad8da50"
 dependencies = [
  "anyhow",
  "base64",
@@ -1558,9 +1575,9 @@ dependencies = [
 
 [[package]]
 name = "ntapi"
-version = "0.3.7"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c28774a7fd2fbb4f0babd8237ce554b73af68021b5f695a3cebd6c59bac0980f"
+checksum = "bc51db7b362b205941f71232e56c625156eb9a929f8cf74a428fd5bc094a4afc"
 dependencies = [
  "winapi",
 ]
@@ -1949,9 +1966,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.43"
+version = "1.0.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a2ca2c61bc9f3d74d2886294ab7b9853abd9c1ad903a3ac7815c58989bb7bab"
+checksum = "7bd7356a8122b6c4a24a82b278680c73357984ca2fc79a0f9fa6dea7dced7c58"
 dependencies = [
  "unicode-ident",
 ]
@@ -2493,9 +2510,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.26.2"
+version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ae2421f3e16b3afd4aa692d23b83d0ba42ee9b0081d5deeb7d21428d7195fb1"
+checksum = "7890fff842b8db56f2033ebee8f6efe1921475c3830c115995552914fb967580"
 dependencies = [
  "cfg-if",
  "core-foundation-sys",
@@ -2531,18 +2548,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.35"
+version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c53f98874615aea268107765aa1ed8f6116782501d18e53d08b471733bea6c85"
+checksum = "0a99cb8c4b9a8ef0e7907cd3b617cc8dc04d571c4e73c8ae403d80ac160bb122"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.35"
+version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8b463991b4eab2d801e724172285ec4195c650e8ec79b149e6c2a8e6dd3f783"
+checksum = "3a891860d3c8d66fec8e73ddb3765f90082374dbaaa833407b904a94f1a7eb43"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2745,7 +2762,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#0422839141989ed5ed39fd7717587ec1b76816de"
+source = "git+https://github.com/broxus/ton-indexer.git#a15eb4be8c237e0aa6946eee3daed414ef6cd151"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2756,7 +2773,6 @@ dependencies = [
  "countme",
  "crc",
  "dashmap",
- "either",
  "everscale-network",
  "fdlimit",
  "futures-util",
@@ -2791,10 +2807,12 @@ name = "ton-kafka-producer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "archive-downloader",
  "argh",
  "async-trait",
  "base64",
  "broxus-util",
+ "bytes",
  "cargo-husky",
  "chrono",
  "config",

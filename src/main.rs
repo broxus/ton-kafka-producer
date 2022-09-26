@@ -7,9 +7,10 @@ use broxus_util::alloc::profiling;
 use everscale_jrpc_server::{JrpcServer, JrpcState};
 use pomfrit::formatter::*;
 
-use ton_kafka_producer::archive_scanner::*;
+use ton_kafka_producer::archives_scanner::*;
 use ton_kafka_producer::config::*;
 use ton_kafka_producer::network_scanner::*;
+use ton_kafka_producer::s3_scanner::S3Scanner;
 
 #[global_allocator]
 static GLOBAL: broxus_util::alloc::Allocator = ton_indexer::alloc::allocator();
@@ -101,14 +102,25 @@ async fn run(app: App) -> Result<()> {
             futures_util::future::pending().await
         }
         ScanType::FromArchives { list_path } => {
-            if let Some(config) = config.kafka_settings {
-                let scanner =
-                    ArchivesScanner::new(config, list_path).context("Failed to create scanner")?;
+            let kafka_settings = config
+                .kafka_settings
+                .context("No kafka settings provided for archives scan")?;
 
-                scanner.run().await.context("Failed to scan archives")
-            } else {
-                panic!("No kafka settings provided for archives scan");
-            }
+            let scanner = ArchivesScanner::new(kafka_settings, list_path)
+                .context("Failed to create scanner")?;
+
+            scanner.run().await.context("Failed to scan archives")
+        }
+        ScanType::FromS3(scanner_config) => {
+            let kafka_settings = config
+                .kafka_settings
+                .context("No kafka settings provided for s3 archives scan")?;
+
+            let scanner = S3Scanner::new(kafka_settings, scanner_config)
+                .await
+                .context("Failed to create scanner")?;
+
+            scanner.run().await.context("Failed to scan archives")
         }
     }
 }

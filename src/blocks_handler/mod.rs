@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bytes::Bytes;
 use ton_indexer::utils::*;
 
 use self::broxus_producer::*;
@@ -36,7 +37,7 @@ impl BlocksHandler {
     pub async fn handle_block(
         &self,
         block_stuff: &BlockStuff,
-        block_data: Option<Vec<u8>>,
+        block_data: Option<Bytes>,
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
         ignore_prepare_error: bool,

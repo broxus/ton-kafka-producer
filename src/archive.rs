@@ -3,6 +3,7 @@ use std::hash::Hash;
 use std::str::FromStr;
 
 use anyhow::Result;
+use bytes::Bytes;
 use ton_indexer::utils::*;
 use ton_types::UInt256;
 
@@ -19,7 +20,7 @@ pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, Parsed
             PackageEntryId::Block(id) => {
                 let mut parsed_entry = map.entry(id.clone()).or_default();
                 let block = BlockStuff::deserialize_checked(id, entry.data)?;
-                parsed_entry.block_stuff = Some((block, entry.data.to_vec()));
+                parsed_entry.block_stuff = Some((block, entry.data.to_vec().into()));
             }
             PackageEntryId::Proof(id) | PackageEntryId::ProofLink(id) => {
                 let mut parsed_entry = map.entry(id.clone()).or_default();
@@ -48,13 +49,13 @@ pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, Parsed
 
 #[derive(Clone)]
 pub struct ParsedEntry {
-    pub block_stuff: (BlockStuff, Vec<u8>),
+    pub block_stuff: (BlockStuff, Bytes),
     pub block_proof_stuff: Option<BlockProofStuff>,
 }
 
 #[derive(Default)]
 struct PartiallyParsedEntry {
-    block_stuff: Option<(BlockStuff, Vec<u8>)>,
+    block_stuff: Option<(BlockStuff, Bytes)>,
     block_proof_stuff: Option<BlockProofStuff>,
 }
 

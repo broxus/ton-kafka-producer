@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use bytes::Bytes;
 use everscale_jrpc_server::JrpcState;
 use ton_indexer::utils::*;
 use ton_indexer::ProcessBlockContext;
@@ -92,7 +93,7 @@ impl BlocksSubscriber {
     async fn handle_block(
         &self,
         block_stuff: &BlockStuff,
-        block_data: Option<Vec<u8>>,
+        block_data: Option<Bytes>,
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
     ) -> Result<()> {
@@ -122,7 +123,7 @@ impl ton_indexer::Subscriber for BlocksSubscriber {
 
         self.handle_block(
             ctx.block_stuff(),
-            block_data,
+            block_data.map(Bytes::from),
             block_proof.as_ref(),
             ctx.shard_state_stuff(),
         )

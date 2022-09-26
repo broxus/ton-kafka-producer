@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bytes::Bytes;
 use futures_util::TryStreamExt;
 use once_cell::race::OnceBox;
 use rustc_hash::FxHashSet;
@@ -50,7 +51,7 @@ impl GqlProducer {
                 _ => return Ok(true),
             };
 
-            tasks.push(producer.write(-1, id.into_bytes(), data.into_bytes(), None));
+            tasks.push(producer.write(-1, id.into(), data.into(), None));
             Ok(true)
         })?;
 
@@ -62,7 +63,7 @@ impl GqlProducer {
     pub async fn handle_block(
         &self,
         block_stuff: &BlockStuff,
-        block_data: Option<Vec<u8>>,
+        block_data: Option<Bytes>,
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
     ) -> Result<()> {
@@ -81,33 +82,33 @@ impl GqlProducer {
             match record {
                 DbRecord::Message { id, data } => {
                     if let Some(producer) = &self.message_producer {
-                        futures.push(producer.write(-1, id.into_bytes(), data.into_bytes(), None));
+                        futures.push(producer.write(-1, id.into(), data.into(), None));
                     }
                 }
                 DbRecord::Transaction { id, data } => {
                     if let Some(producer) = &self.transaction_producer {
-                        futures.push(producer.write(-1, id.into_bytes(), data.into_bytes(), None));
+                        futures.push(producer.write(-1, id.into(), data.into(), None));
                     }
                 }
                 DbRecord::Account { id, data } => {
                     if let Some(producer) = &self.account_producer {
-                        futures.push(producer.write(-1, id.into_bytes(), data.into_bytes(), None));
+                        futures.push(producer.write(-1, id.into(), data.into(), None));
                     }
                 }
                 DbRecord::Block { id, data } => {
                     if let Some(producer) = &self.block_producer {
-                        futures.push(producer.write(-1, id.into_bytes(), data.into_bytes(), None));
+                        futures.push(producer.write(-1, id.into(), data.into(), None));
                     }
                 }
                 DbRecord::BlockProof { id, data } => {
                     if let Some(producer) = &self.block_proof_producer {
-                        futures.push(producer.write(-1, id.into_bytes(), data.into_bytes(), None));
+                        futures.push(producer.write(-1, id.into(), data.into(), None));
                     }
                 }
                 DbRecord::RawBlock { root_hash, boc, .. } => {
                     if let Some(producer) = &self.raw_block_producer {
                         let now = chrono::Utc::now().timestamp();
-                        futures.push(producer.write(-1, root_hash.to_vec(), boc, Some(now)));
+                        futures.push(producer.write(-1, root_hash.to_vec().into(), boc, Some(now)));
                     }
                 }
             }
@@ -124,7 +125,7 @@ impl GqlProducer {
     fn prepare_records(
         &self,
         block_stuff: &BlockStuff,
-        block_data: Option<Vec<u8>>,
+        block_data: Option<Bytes>,
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
     ) -> Result<Vec<DbRecord>> {
@@ -246,7 +247,7 @@ enum DbRecord {
     Account { id: String, data: String },
     BlockProof { id: String, data: String },
     Block { id: String, data: String },
-    RawBlock { root_hash: [u8; 32], boc: Vec<u8> },
+    RawBlock { root_hash: [u8; 32], boc: Bytes },
 }
 
 impl DbRecord {
@@ -402,7 +403,7 @@ impl DbRecord {
         })
     }
 
-    fn raw_block(block_id: &ton_block::BlockIdExt, block_boc: Vec<u8>) -> Result<Self> {
+    fn raw_block(block_id: &ton_block::BlockIdExt, block_boc: Bytes) -> Result<Self> {
         Ok(Self::RawBlock {
             root_hash: block_id.root_hash.inner(),
             boc: block_boc,

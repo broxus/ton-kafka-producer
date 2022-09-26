@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
+use bytes::Bytes;
 use everscale_network::utils::FxDashMap;
 use futures_util::future::Either;
 use rdkafka::error::{KafkaError, RDKafkaErrorCode};
@@ -88,8 +89,8 @@ impl KafkaProducer {
     pub async fn write(
         &self,
         partition: i32,
-        key: Vec<u8>,
-        value: Vec<u8>,
+        key: Bytes,
+        value: Bytes,
         timestamp: Option<i64>,
     ) -> Result<()> {
         let batch = if self.fixed_partitions {
@@ -107,7 +108,7 @@ impl KafkaProducer {
         if records.len() > self.config.batch_flush_threshold_size {
             let now = Instant::now();
 
-            let mut batch_to_retry: Option<Vec<(Vec<u8>, Vec<u8>)>> = None;
+            let mut batch_to_retry: Option<Vec<(Bytes, Bytes)>> = None;
 
             // Check pending records
             while let Some(item) = records.front() {
@@ -216,8 +217,8 @@ impl KafkaProducer {
     async fn send_record(
         &self,
         partition: i32,
-        key: Vec<u8>,
-        value: Vec<u8>,
+        key: Bytes,
+        value: Bytes,
         timestamp: Option<i64>,
     ) -> PendingRecord {
         const HEADER_NAME: &str = "raw_block_timestamp";
@@ -229,8 +230,8 @@ impl KafkaProducer {
 
         let mut record = FutureRecord::to(&self.config.topic)
             .partition(partition)
-            .key(&key)
-            .payload(&value)
+            .key(key.as_ref())
+            .payload(value.as_ref())
             .headers(headers.clone());
 
         loop {
@@ -276,8 +277,8 @@ struct Batch {
 }
 
 struct PendingRecord {
-    key: Vec<u8>,
-    value: Vec<u8>,
+    key: Bytes,
+    value: Bytes,
     created_at: Instant,
     delivery_future: DeliveryFuture,
 }

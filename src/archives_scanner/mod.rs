@@ -6,11 +6,9 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 
-use self::archive::*;
+use crate::archive::*;
 use crate::blocks_handler::*;
 use crate::config::*;
-
-mod archive;
 
 pub struct ArchivesScanner {
     handler: Arc<BlocksHandler>,
@@ -18,11 +16,11 @@ pub struct ArchivesScanner {
 }
 
 impl ArchivesScanner {
-    pub fn new(config: KafkaConfig, list_path: PathBuf) -> Result<Self> {
+    pub fn new(kafka_settings: KafkaConfig, list_path: PathBuf) -> Result<Self> {
         let list = std::fs::read_to_string(list_path)?;
 
         Ok(Self {
-            handler: Arc::new(BlocksHandler::new(Some(config))?),
+            handler: Arc::new(BlocksHandler::new(Some(kafka_settings))?),
             list,
         })
     }

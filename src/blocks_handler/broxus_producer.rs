@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use bytes::Bytes;
 use ton_block::{Deserializable, HashmapAugType};
 use ton_block_compressor::ZstdWrapper;
 use ton_types::{HashmapType, UInt256};
@@ -44,7 +45,7 @@ impl BroxusProducer {
         for record in records {
             futures.push(self.raw_transaction_producer.write(
                 record.partition,
-                record.key.into_vec(),
+                record.key.into_vec().into(),
                 record.value,
                 Some(now),
             ));
@@ -107,7 +108,7 @@ fn prepare_raw_transaction_record(
     };
 
     let key = raw_transaction.hash(ton_types::MAX_LEVEL);
-    let value = compressor.compress_owned(&boc)?;
+    let value = compressor.compress_owned(&boc)?.into();
 
     Ok(Some(TransactionRecord {
         partition,
@@ -119,5 +120,5 @@ fn prepare_raw_transaction_record(
 struct TransactionRecord {
     partition: i32,
     key: UInt256,
-    value: Vec<u8>,
+    value: Bytes,
 }

@@ -9,6 +9,7 @@ argh = "0.1"
 async-trait = "0.1"
 base64 = "0.13"
 broxus-util = { version = "0.1", features = ["config", "alloc", "alloc-profiling", "public-ip", "signal"] }
+bytes = "1.2.1"
 chrono = "0.4.22"
 config = { version = "0.13", default-features = false, features = ["yaml"] }
 countme = { version = "3.0.0", features = ["enable"] }
@@ -35,6 +36,7 @@ ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor" }
 
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = ["count-cells", "archive-uploader"] }
+archive-downloader = { git = "https://github.com/broxus/ton-indexer.git" }
 
 everscale-jrpc-server = { git = "https://github.com/broxus/everscale-jrpc.git" }
 
