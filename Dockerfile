@@ -22,4 +22,4 @@ RUN apt-get update &&  apt-get install -y --no-install-recommends    openssl ca-
     && rm -rf /var/lib/apt/lists/
 COPY --from=builder app/target/release/ton-kafka-producer /usr/local/bin/ton-kafka-producer
 RUN chmod +x /usr/local/bin/ton-kafka-producer
-ENTRYPOINT ["ton-kafka-producer", "--config", "config.yaml", " --global-config", "ton-global.config.json"]
+ENTRYPOINT ["ton-kafka-producer"]
