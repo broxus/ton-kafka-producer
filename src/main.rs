@@ -14,7 +14,7 @@ use ton_kafka_producer::network_scanner::*;
 #[global_allocator]
 static GLOBAL: broxus_util::alloc::Allocator = ton_indexer::alloc::allocator();
 
-#[tokio::main]
+#[tokio::main(worker_threads = 16)]
 async fn main() -> Result<()> {
     let any_signal = broxus_util::any_signal(broxus_util::TERMINATION_SIGNALS);
 
@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
         result = run => result,
         signal = any_signal => {
             if let Ok(signal) = signal {
-                log::warn!("Received signal ({:?}). Flushing state...", signal);
+                tracing::warn!("Received signal ({:?}). Flushing state...", signal);
             }
             // NOTE: engine future is safely dropped here so rocksdb method
             // `rocksdb_close` is called in DB object destructor
@@ -55,9 +55,9 @@ async fn run(app: App) -> Result<()> {
             )
             .context("Failed to open global config")?;
 
-            broxus_util::init_logger(&config.logger_settings).context("Failed to init logger")?;
+            init_logger().unwrap();
 
-            log::info!("Initializing producer...");
+            tracing::info!("Initializing producer...");
 
             let jrpc_state = Arc::new(JrpcState::default());
 
@@ -84,20 +84,20 @@ async fn run(app: App) -> Result<()> {
                     });
                 }
             });
-            log::info!("Initialized exporter");
+            tracing::info!("Initialized exporter");
 
             engine.start().await.context("Failed to start engine")?;
-            log::info!("Initialized engine");
+            tracing::info!("Initialized engine");
 
             if let Some(config) = config.rpc_config {
                 let jrpc = JrpcServer::with_state(jrpc_state)
                     .build(engine.indexer(), config.address)
                     .await?;
                 tokio::spawn(jrpc);
-                log::info!("Initialized RPC");
+                tracing::info!("Initialized RPC");
             }
 
-            log::info!("Initialized producer");
+            tracing::info!("Initialized producer");
             futures_util::future::pending().await
         }
         ScanType::FromArchives { list_path } => {
@@ -213,7 +213,7 @@ impl std::fmt::Display for Metrics<'_> {
 
         for (overlay_id, neighbour_metrics) in indexer.network_neighbour_metrics() {
             f.begin_metric("overlay_peer_search_task_count")
-                .label(OVERLAY_ID, &overlay_id)
+                .label(OVERLAY_ID, overlay_id)
                 .value(neighbour_metrics.peer_search_task_count)?;
         }
 
@@ -231,10 +231,7 @@ impl std::fmt::Display for Metrics<'_> {
                 .value(overlay_metrics.node_count)?;
             f.begin_metric("overlay_known_peers_len")
                 .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.known_peers_len)?;
-            f.begin_metric("overlay_random_peers_len")
-                .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.random_peers_len)?;
+                .value(overlay_metrics.known_peers)?;
             f.begin_metric("overlay_neighbours")
                 .label(OVERLAY_ID, &overlay_id)
                 .value(overlay_metrics.neighbours)?;
@@ -265,7 +262,7 @@ impl std::fmt::Display for Metrics<'_> {
             dirty,
             fragmentation,
         } = profiling::fetch_stats().map_err(|e| {
-            log::error!("Failed to fetch allocator stats: {e:?}");
+            tracing::error!("Failed to fetch allocator stats: {e:?}");
             std::fmt::Error
         })?;
 
@@ -296,7 +293,7 @@ impl std::fmt::Display for Metrics<'_> {
             compressed_block_cache_usage,
             compressed_block_cache_pined_usage,
         } = indexer.get_memory_usage_stats().map_err(|e| {
-            log::error!("Failed to fetch rocksdb stats: {e:?}");
+            tracing::error!("Failed to fetch rocksdb stats: {e:?}");
             std::fmt::Error
         })?;
 
@@ -328,23 +325,52 @@ async fn memory_profiler() {
 
     let mut is_active = false;
     while stream.recv().await.is_some() {
-        log::info!("Memory profiler signal received");
+        tracing::info!("Memory profiler signal received");
         if !is_active {
-            log::info!("Activating memory profiler");
+            tracing::info!("Activating memory profiler");
             if let Err(e) = profiling::start() {
-                log::error!("Failed to activate memory profiler: {}", e);
+                tracing::error!("Failed to activate memory profiler: {}", e);
             }
         } else {
             let invocation_time = chrono::Local::now();
             let path = format!("{}_{}", path, invocation_time.format("%Y-%m-%d_%H-%M-%S"));
             if let Err(e) = profiling::dump(&path) {
-                log::error!("Failed to dump prof: {:?}", e);
+                tracing::error!("Failed to dump prof: {:?}", e);
             }
             if let Err(e) = profiling::stop() {
-                log::error!("Failed to deactivate memory profiler: {}", e);
+                tracing::error!("Failed to deactivate memory profiler: {}", e);
             }
         }
 
         is_active = !is_active;
     }
+}
+
+fn init_logger() -> Result<()> {
+    use std::fs::File;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::{layer::SubscriberExt, registry::Registry};
+
+    if atty::is(atty::Stream::Stdout) {
+        Registry::default()
+            .with(EnvFilter::from_default_env())
+            .with(tracing_subscriber::fmt::layer().pretty())
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .json()
+                    .with_target(true)
+                    .with_writer(File::create("log.json").unwrap()),
+            )
+            .init();
+    } else {
+        Registry::default()
+            .with(EnvFilter::from_default_env())
+            .with(tracing_subscriber::fmt::layer().compact().without_time())
+            .init();
+    }
+
+    tracing::info!("Logger initialized");
+    tracing::debug!("Logger initialized");
+    Ok(())
 }

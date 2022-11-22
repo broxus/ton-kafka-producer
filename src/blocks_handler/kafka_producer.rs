@@ -3,11 +3,12 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
-use everscale_network::utils::FxDashMap;
 use futures_util::future::Either;
 use rdkafka::error::{KafkaError, RDKafkaErrorCode};
+use rdkafka::message::Header;
 use rdkafka::producer::{DeliveryFuture, FutureProducer, FutureRecord, Producer};
 use tokio::sync::Mutex;
+use ton_types::FxDashMap;
 
 use crate::config::*;
 
@@ -122,9 +123,9 @@ impl KafkaProducer {
                         hex::encode(&item.key)
                     )
                 })? {
-                    log::error!(
-                        "Batch item delivery error tx {}: {:?}. Retrying full batch",
-                        hex::encode(&item.key),
+                    tracing::error!(
+                        key = hex::encode(&item.key),
+                        "Batch item delivery error: {:?}. Retrying full batch",
                         e
                     );
                 } else {
@@ -155,10 +156,10 @@ impl KafkaProducer {
 
             // Write batch
             if let Some(batch_to_retry) = batch_to_retry {
-                log::error!(
-                    "FOUND BATCH TO RETRY: {} items in partition {}",
-                    batch_to_retry.len(),
-                    partition
+                tracing::error!(
+                    items = batch_to_retry.len(),
+                    partition,
+                    "FOUND BATCH TO RETRY"
                 );
 
                 let batch_len = batch_to_retry.len();
@@ -182,9 +183,9 @@ impl KafkaProducer {
                             // Move to the next item on successful delivery
                             Ok(_) => break,
                             // Log error and retry on failure
-                            Err((e, _)) => log::error!(
-                                "Batch item delivery error tx {}: {:?}. Retrying full batch",
-                                hex::encode(&record.key),
+                            Err((e, _)) => tracing::error!(
+                                key = hex::encode(&record.key),
+                                "Batch item delivery error {:?}. Retrying full batch",
                                 e
                             ),
                         }
@@ -196,7 +197,7 @@ impl KafkaProducer {
                 }
 
                 // Done
-                log::info!("Retried batch of {} elements", batch_len);
+                tracing::info!(len = batch_len, "Retried batch");
             }
         }
 
@@ -216,7 +217,10 @@ impl KafkaProducer {
         const HEADER_NAME: &str = "raw_block_timestamp";
 
         let header_value = timestamp.unwrap_or_default().to_be_bytes();
-        let headers = rdkafka::message::OwnedHeaders::new().add(HEADER_NAME, &header_value);
+        let headers = rdkafka::message::OwnedHeaders::new().insert(Header {
+            key: HEADER_NAME,
+            value: Some(&header_value),
+        });
 
         let interval = Duration::from_millis(self.config.attempt_interval_ms);
 
@@ -244,9 +248,9 @@ impl KafkaProducer {
                 }
                 Err((e, sent_record)) => {
                     record = sent_record;
-                    log::warn!(
-                        "Failed to send message to kafka topic {}: {:?}",
-                        self.config.topic,
+                    tracing::warn!(
+                        topic = &self.config.topic,
+                        "Failed to send message: {:?}",
                         e
                     );
                     tokio::time::sleep(interval).await;
@@ -258,8 +262,8 @@ impl KafkaProducer {
 
 impl Drop for KafkaProducer {
     fn drop(&mut self) {
-        log::info!("Flushing kafka producer");
-        self.producer.flush(None);
+        tracing::warn!("Flushing kafka producer");
+        self.producer.flush(None).unwrap();
     }
 }
 

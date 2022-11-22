@@ -90,7 +90,7 @@ pub struct NodeConfig {
     #[serde(default)]
     pub dht_options: dht::NodeOptions,
     #[serde(default)]
-    pub overlay_shard_options: overlay::ShardOptions,
+    pub overlay_shard_options: overlay::OverlayOptions,
     #[serde(default)]
     pub neighbours_options: ton_indexer::NeighboursOptions,
 }
@@ -99,7 +99,7 @@ impl NodeConfig {
     pub async fn build_indexer_config(self) -> Result<ton_indexer::NodeConfig> {
         // Determine public ip
         let ip_address = broxus_util::resolve_public_ip(self.adnl_public_ip).await?;
-        log::info!("Using public ip: {}", ip_address);
+        tracing::info!("Using public ip: {}", ip_address);
 
         // Generate temp keys
         let adnl_keys = ton_indexer::NodeKeys::load(self.temp_keys_path, false)
