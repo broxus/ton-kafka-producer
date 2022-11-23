@@ -71,7 +71,7 @@ impl GqlProducer {
         {
             Ok(records) => records,
             Err(e) => {
-                log::error!("Failed to process block {}: {:?}", block_stuff.id(), e);
+                tracing::error!(id = ?block_stuff.id(), "Failed to process block {:?}", e);
                 return Ok(());
             }
         };

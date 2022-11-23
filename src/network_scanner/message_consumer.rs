@@ -45,7 +45,7 @@ impl MessageConsumer {
             .create()
             .context("Failed to create consumer")?;
 
-        log::info!("Subscribing to topic: {}", config.topic);
+        tracing::info!(topic = config.topic, "Subscribing");
         consumer
             .subscribe(&[&config.topic])
             .context("Failed to subscribe to the topic")?;
@@ -67,30 +67,30 @@ impl MessageConsumer {
                 let message = match message {
                     Ok(message) => message,
                     Err(e) => {
-                        log::error!("Kafka error: {:?}", e);
+                        tracing::error!("Kafka error: {:?}", e);
                         continue;
                     }
                 };
 
                 if let Some(payload) = message.payload() {
                     if let Err(e) = send_external_message(&engine, payload).await {
-                        log::error!("Failed to broadcast external message: {:?}", e);
+                        tracing::error!("Failed to broadcast external message: {:?}", e);
                     }
                 } else {
-                    log::warn!(
-                        "Record with empty payload (topic: {}, partition: {}, offset: {})",
-                        message.topic(),
-                        message.partition(),
-                        message.offset()
+                    tracing::warn!(
+                        topic = message.topic(),
+                        partition = message.partition(),
+                        offset = message.offset(),
+                        "Record with empty payload"
                     );
                 }
 
                 if let Err(e) = consumer.commit_message(&message, CommitMode::Async) {
-                    log::error!(
-                        "Failed to commit message (topic: {}, partition: {}, offset: {}): {:?}",
-                        message.topic(),
-                        message.partition(),
-                        message.offset(),
+                    tracing::warn!(
+                        topic = message.topic(),
+                        partition = message.partition(),
+                        offset = message.offset(),
+                        "Failed to commit message: {:?}",
                         e
                     );
                 }
