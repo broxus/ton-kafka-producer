@@ -9,7 +9,7 @@ argh = "0.1"
 async-trait = "0.1"
 atty = "0.2.14"
 base64 = "0.13"
-broxus-util = { version = "0.1", features = ["config", "alloc", "alloc-profiling", "public-ip", "signal"] }
+broxus-util = { version = "0.1", features = [ "alloc", "alloc-profiling", "public-ip", "signal"] }
 bytes = "1.2.1"
 chrono = "0.4.22"
 config = { version = "0.13", default-features = false, features = ["yaml"] }
