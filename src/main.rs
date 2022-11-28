@@ -17,6 +17,12 @@ static GLOBAL: broxus_util::alloc::Allocator = ton_indexer::alloc::allocator();
 
 #[tokio::main(worker_threads = 16)]
 async fn main() -> Result<()> {
+    if atty::is(atty::Stream::Stdout) {
+        tracing_subscriber::fmt::init();
+    } else {
+        tracing_subscriber::fmt::fmt().without_time().init();
+    }
+
     let any_signal = broxus_util::any_signal(broxus_util::TERMINATION_SIGNALS);
 
     let run = run(argh::from_env());
@@ -25,7 +31,7 @@ async fn main() -> Result<()> {
         result = run => result,
         signal = any_signal => {
             if let Ok(signal) = signal {
-                tracing::warn!("Received signal ({:?}). Flushing state...", signal);
+                tracing::warn!(?signal, "received termination signal, flushing state...");
             }
             // NOTE: engine future is safely dropped here so rocksdb method
             // `rocksdb_close` is called in DB object destructor
@@ -56,9 +62,7 @@ async fn run(app: App) -> Result<()> {
             )
             .context("Failed to open global config")?;
 
-            init_logger().unwrap();
-
-            tracing::info!("Initializing producer...");
+            tracing::info!("initializing producer");
 
             let jrpc_state = Arc::new(JrpcState::default());
 
@@ -85,20 +89,20 @@ async fn run(app: App) -> Result<()> {
                     });
                 }
             });
-            tracing::info!("Initialized exporter");
+            tracing::info!("initialized exporter");
 
             engine.start().await.context("Failed to start engine")?;
-            tracing::info!("Initialized engine");
+            tracing::info!("initialized engine");
 
             if let Some(config) = config.rpc_config {
                 let jrpc = JrpcServer::with_state(jrpc_state)
                     .build(engine.indexer(), config.address)
                     .await?;
                 tokio::spawn(jrpc);
-                tracing::info!("Initialized RPC");
+                tracing::info!("initialized RPC");
             }
 
-            tracing::info!("Initialized producer");
+            tracing::info!("initialized producer");
             futures_util::future::pending().await
         }
         ScanType::FromArchives { list_path } => {
@@ -274,7 +278,7 @@ impl std::fmt::Display for Metrics<'_> {
             dirty,
             fragmentation,
         } = profiling::fetch_stats().map_err(|e| {
-            tracing::error!("Failed to fetch allocator stats: {e:?}");
+            tracing::error!("failed to fetch allocator stats: {e:?}");
             std::fmt::Error
         })?;
 
@@ -305,7 +309,7 @@ impl std::fmt::Display for Metrics<'_> {
             compressed_block_cache_usage,
             compressed_block_cache_pined_usage,
         } = indexer.get_memory_usage_stats().map_err(|e| {
-            tracing::error!("Failed to fetch rocksdb stats: {e:?}");
+            tracing::error!("failed to fetch rocksdb stats: {e:?}");
             std::fmt::Error
         })?;
 
@@ -337,52 +341,23 @@ async fn memory_profiler() {
 
     let mut is_active = false;
     while stream.recv().await.is_some() {
-        tracing::info!("Memory profiler signal received");
+        tracing::info!("memory profiler signal received");
         if !is_active {
-            tracing::info!("Activating memory profiler");
+            tracing::info!("activating memory profiler");
             if let Err(e) = profiling::start() {
-                tracing::error!("Failed to activate memory profiler: {}", e);
+                tracing::error!("failed to activate memory profiler: {e:?}");
             }
         } else {
             let invocation_time = chrono::Local::now();
             let path = format!("{}_{}", path, invocation_time.format("%Y-%m-%d_%H-%M-%S"));
             if let Err(e) = profiling::dump(&path) {
-                tracing::error!("Failed to dump prof: {:?}", e);
+                tracing::error!("failed to dump prof: {e:?}");
             }
             if let Err(e) = profiling::stop() {
-                tracing::error!("Failed to deactivate memory profiler: {}", e);
+                tracing::error!("failed to deactivate memory profiler: {e:?}");
             }
         }
 
         is_active = !is_active;
     }
-}
-
-fn init_logger() -> Result<()> {
-    use std::fs::File;
-    use tracing_subscriber::util::SubscriberInitExt;
-    use tracing_subscriber::EnvFilter;
-    use tracing_subscriber::{layer::SubscriberExt, registry::Registry};
-
-    if atty::is(atty::Stream::Stdout) {
-        Registry::default()
-            .with(EnvFilter::from_default_env())
-            .with(tracing_subscriber::fmt::layer().pretty())
-            .with(
-                tracing_subscriber::fmt::layer()
-                    .json()
-                    .with_target(true)
-                    .with_writer(File::create("log.json").unwrap()),
-            )
-            .init();
-    } else {
-        Registry::default()
-            .with(EnvFilter::from_default_env())
-            .with(tracing_subscriber::fmt::layer().compact().without_time())
-            .init();
-    }
-
-    tracing::info!("Logger initialized");
-    tracing::debug!("Logger initialized");
-    Ok(())
 }

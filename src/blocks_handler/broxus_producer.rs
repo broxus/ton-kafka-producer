@@ -33,7 +33,7 @@ impl BroxusProducer {
             Ok(records) if records.is_empty() => return Ok(()),
             Ok(records) => records,
             Err(e) if ignore_prepare_error => {
-                tracing::error!(?block_id, "Failed to process block: {e:?}");
+                tracing::error!(?block_id, "failed to process block: {e:?}");
                 return Ok(());
             }
             Err(e) => return Err(e).context("Failed to prepare records"),

@@ -133,8 +133,7 @@ impl KafkaProducer {
                 })? {
                     tracing::error!(
                         key = hex::encode(&item.key),
-                        "Batch item delivery error: {:?}. Retrying full batch",
-                        e
+                        "batch item delivery error: {e:?}, retrying full batch",
                     );
                 } else {
                     // Continue to next pending record on successful delivery
@@ -167,7 +166,7 @@ impl KafkaProducer {
                 tracing::error!(
                     items = batch_to_retry.len(),
                     partition,
-                    "FOUND BATCH TO RETRY"
+                    "found batch to retry"
                 );
 
                 let batch_len = batch_to_retry.len();
@@ -193,8 +192,7 @@ impl KafkaProducer {
                             // Log error and retry on failure
                             Err((e, _)) => tracing::error!(
                                 key = hex::encode(&record.key),
-                                "Batch item delivery error {:?}. Retrying full batch",
-                                e
+                                "batch item delivery error {e:?}, retrying full batch",
                             ),
                         }
 
@@ -205,7 +203,7 @@ impl KafkaProducer {
                 }
 
                 // Done
-                tracing::info!(len = batch_len, "Retried batch");
+                tracing::info!(len = batch_len, "retried batch");
             }
         }
 
@@ -256,11 +254,7 @@ impl KafkaProducer {
                 }
                 Err((e, sent_record)) => {
                     record = sent_record;
-                    tracing::warn!(
-                        topic = &self.config.topic,
-                        "Failed to send message: {:?}",
-                        e
-                    );
+                    tracing::warn!(topic = &self.config.topic, "failed to send message: {e:?}",);
                     tokio::time::sleep(interval).await;
                 }
             };
@@ -270,7 +264,7 @@ impl KafkaProducer {
 
 impl Drop for KafkaProducer {
     fn drop(&mut self) {
-        tracing::warn!("Flushing kafka producer");
+        tracing::warn!("flushing kafka producer");
         self.producer.flush(None).unwrap();
     }
 }

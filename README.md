@@ -21,6 +21,7 @@
    ```
 
 ### Config example
+
 ```yaml
 ---
 # Optional states endpoint (see docs below)
@@ -87,7 +88,6 @@ kafka_settings:
         sasl_mechanism: "sasl mechanism"
         sasl_username: "your sasl username"
         sasl_password: "your sasl password"
-        
 # OR gql kafka producer
 #
 #kafka_settings:
@@ -117,28 +117,4 @@ kafka_settings:
 #    topic: gql.blocks_signatures
 #    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
 #    attempt_interval_ms: 100
-
-# log4rs settings.
-# See https://docs.rs/log4rs/1.0.0/log4rs/ for more details
-logger_settings:
-  appenders:
-    stdout:
-      kind: console
-      encoder:
-        pattern: "{h({l})} {M} = {m} {n}"
-  root:
-    level: warn
-    appenders:
-      - stdout
-  loggers:
-    ton_indexer:
-      level: info
-      appenders:
-        - stdout
-      additive: false
-    ton_kafka_producer:
-      level: info
-      appenders:
-        - stdout
-      additive: false
 ```

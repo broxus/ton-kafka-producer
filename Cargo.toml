@@ -9,7 +9,7 @@ argh = "0.1"
 async-trait = "0.1"
 atty = "0.2.14"
 base64 = "0.13"
-broxus-util = { version = "0.1", features = [ "alloc", "alloc-profiling", "public-ip", "signal"] }
+broxus-util = { version = "0.1", features = ["alloc", "alloc-profiling", "public-ip", "signal"] }
 bytes = "1.2.1"
 chrono = "0.4.22"
 config = { version = "0.13", default-features = false, features = ["yaml"] }
@@ -37,10 +37,13 @@ ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor.g
 ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 
-ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = ["count-cells", "archive-uploader"] }
+ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = [
+    "count-cells",
+    "archive-uploader",
+] }
 archive-downloader = { git = "https://github.com/broxus/ton-indexer.git" }
 tracing = "0.1.34"
-tracing-subscriber = { version = "0.3", features = ["registry", "fmt", "std", "env-filter", "json", "tracing-log"] }
+tracing-subscriber = "0.3"
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }
