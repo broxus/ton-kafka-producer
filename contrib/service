@@ -1,0 +1,16 @@
+[Unit]
+Description=ton-kafka-producer
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=yes
+WorkingDirectory=/etc/ton-kafka-producer
+ExecReload=kill -HUP $MAINPID
+ExecStart=/usr/local/bin/ton-kafka-producer \
+    --config /etc/ton-kafka-producer/config.yaml \
+    --global-config /etc/ton-kafka-producer/ton-global.config.json
+
+[Install]
+WantedBy=multi-user.target

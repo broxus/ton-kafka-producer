@@ -6,5 +6,10 @@ include:
 stages:
   - cloudbuild
 
-cloudbuild:image:
-  extends: .cloudbuild:common
+cloudbuild:package:
+  extends: .cloudbuild:deb-package
+  only:
+  - tags
+  except:
+  - branches
+

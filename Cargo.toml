@@ -1,7 +1,9 @@
 [package]
 name = "ton-kafka-producer"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+license-file = "LICENSE"
+authors = ["Broxus team"]
 
 [dependencies]
 anyhow = "1.0"
@@ -51,3 +53,13 @@ cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] 
 [features]
 default = ["sasl"]
 sasl = ["rdkafka/sasl"]
+
+[package.metadata.deb]
+depends = "libstdc++6[amd64]"
+section = "utility"
+assets = [["target/release/ton-kafka-producer", "/usr/local/bin/ton-kafka-producer", "755"]]
+conf-files = ["/etc/ton-kafka-producer/"]
+maintainer-scripts = "contrib/"
+
+[package.metadata.deb.systemd-units]
+unit-scripts = "contrib/"
