@@ -9,11 +9,13 @@ use crate::config::*;
 mod broxus_producer;
 mod gql_producer;
 mod kafka_producer;
+mod tx_tree_producer;
 
 #[allow(clippy::large_enum_variant)]
 pub enum BlocksHandler {
     Broxus(BroxusProducer),
     Gql(GqlProducer),
+
     None,
 }
 
