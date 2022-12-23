@@ -3,7 +3,7 @@ use ton_block::{ChildCell, GetRepresentationHash, HashmapAugType, Message, Seria
 
 use crate::blocks_handler::kafka_producer::{KafkaProducer, Partitions};
 use crate::config::KafkaProducerConfig;
-use crate::transaction_storage::TransactionStorage;
+use crate::transaction_storage::storage::TransactionStorage;
 
 pub struct TxTreeProducer {
     producer: KafkaProducer,
@@ -12,7 +12,7 @@ pub struct TxTreeProducer {
 
 impl TxTreeProducer {
     pub fn new(config: KafkaProducerConfig, storage: TransactionStorage) -> Result<TxTreeProducer> {
-        let kafka_producer = KafkaProducer::new(config, Partitions::Any)?;
+        let kafka_producer = KafkaProducer::new(config, Partitions::any())?;
         Ok(Self {
             producer: kafka_producer,
             transaction_storage: storage,
@@ -59,24 +59,24 @@ impl TxTreeProducer {
                                 (Some(&message_hash), None)
                             };
 
-                            self.transaction_storage.add_transaction(
-                                tx_hash.inner(),
-                                base64_boc.as_slice(),
-                                external_in,
-                                internal_in,
-                                out_msgs.as_slice(),
-                            )?;
+                            // self.transaction_storage.add_transaction(
+                            //     tx_hash.inner(),
+                            //     base64_boc.as_slice(),
+                            //     external_in,
+                            //     internal_in,
+                            //     out_msgs.as_slice(),
+                            // )?;
                         }
                         _ => (),
                     }
 
-                    if &tx.out_msgs.is_empty() {}
+                    //if &tx.out_msgs.is_empty() {}
 
                     Ok(true)
                 })?;
                 Ok(true)
             })?;
 
-        Ok(records)
+        Ok(())
     }
 }
