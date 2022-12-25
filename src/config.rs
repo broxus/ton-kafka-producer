@@ -27,6 +27,10 @@ pub struct AppConfig {
     #[serde(default)]
     pub kafka_settings: Option<KafkaConfig>,
 
+    /// Max transaction depth to store in transaction storage for TxTree producer
+    #[serde(default)]
+    pub max_transaction_depth: Option<u32>,
+
     /// log4rs settings.
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
     #[serde(default = "default_logger_settings")]
@@ -54,6 +58,13 @@ impl Default for ScanType {
             node_config: Default::default(),
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StorageSettings {
+    pub rocksdb_path: String,
+    pub max_tx_storage_depth: u32,
 }
 
 /// TON node settings
@@ -192,6 +203,7 @@ pub struct StatesConfig {
 pub enum KafkaConfig {
     Broxus(BroxusKafkaConfig),
     Gql(GqlKafkaConfig),
+    TxTree(BroxusKafkaConfig),
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -200,6 +212,12 @@ pub struct BroxusKafkaConfig {
     /// Compressed raw transactions producer
     pub raw_transaction_producer: KafkaProducerConfig,
 }
+
+// #[derive(Debug, Clone, Default, Deserialize)]
+// #[serde(default, deny_unknown_fields)]
+// pub struct TxTreeProducerConfig {
+//     pub raw_transaction_producer: KafkaProducerConfig,
+// }
 
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]

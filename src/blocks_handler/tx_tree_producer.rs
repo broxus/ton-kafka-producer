@@ -1,27 +1,34 @@
 use anyhow::Result;
-use ton_block::{ChildCell, GetRepresentationHash, HashmapAugType, Message, Serializable};
+use std::path::Path;
+use std::sync::Arc;
+use ton_block::{HashmapAugType, Serializable};
 
 use crate::blocks_handler::kafka_producer::{KafkaProducer, Partitions};
 use crate::config::KafkaProducerConfig;
 use crate::transaction_storage::storage::TransactionStorage;
 
 pub struct TxTreeProducer {
-    producer: KafkaProducer,
-    transaction_storage: TransactionStorage,
+    producer: Option<KafkaProducer>,
+    transaction_storage: Arc<TransactionStorage>,
 }
 
 impl TxTreeProducer {
-    pub fn new(config: KafkaProducerConfig, storage: TransactionStorage) -> Result<TxTreeProducer> {
-        let kafka_producer = KafkaProducer::new(config, Partitions::any())?;
+    pub fn new(
+        config: KafkaProducerConfig,
+        storage_path: &Path,
+        max_store_depth: u32,
+    ) -> Result<Self> {
+        //let kafka_producer = KafkaProducer::new(config, Partitions::any())?;
+        let transaction_storage = TransactionStorage::new(storage_path, max_store_depth)?;
         Ok(Self {
-            producer: kafka_producer,
-            transaction_storage: storage,
+            producer: None,
+            transaction_storage,
         })
     }
 
     pub async fn handle_block(
         &self,
-        block_id: &ton_block::BlockIdExt,
+        _: &ton_block::BlockIdExt,
         block: &ton_block::Block,
         max_horizontal_transactions: u8,
     ) -> Result<()> {
@@ -34,7 +41,9 @@ impl TxTreeProducer {
                     let tx = &tx.inner();
                     let tx_cell = tx.serialize()?;
                     let tx_hash = tx_cell.hash(ton_types::MAX_LEVEL as usize);
-                    let base64_boc = tx_cell.write_to_bytes()?;
+                    let hex_hash = hex::encode(tx_hash.as_slice());
+                    tracing::info!("tx hash: {hex_hash}");
+                    //let base64_boc = tx_cell.write_to_bytes()?;
 
                     let tx_out_message_size = tx.out_msgs.len()?;
 

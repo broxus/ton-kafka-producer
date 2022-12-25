@@ -68,6 +68,7 @@ async fn run(app: App) -> Result<()> {
 
             let engine = NetworkScanner::new(
                 config.kafka_settings,
+                config.max_transaction_depth,
                 node_config,
                 global_config,
                 jrpc_state.clone(),

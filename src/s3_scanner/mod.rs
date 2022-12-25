@@ -22,7 +22,7 @@ impl S3Scanner {
             .context("Failed to create S3 archive downloader")?;
 
         Ok(Self {
-            handler: Arc::new(BlocksHandler::new(Some(kafka_settings))?),
+            handler: Arc::new(BlocksHandler::new(Some(kafka_settings), None, None)?),
             downloader,
             retry_on_error: config.retry_on_error,
         })
@@ -53,6 +53,7 @@ impl S3Scanner {
                             parsed.block_proof_stuff.as_ref(),
                             None,
                             false,
+                            100,
                         )
                         .await
                         .context("Failed to handle block")

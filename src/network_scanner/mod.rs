@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -20,6 +21,7 @@ pub struct NetworkScanner {
 impl NetworkScanner {
     pub async fn new(
         kafka_settings: Option<KafkaConfig>,
+        max_transaction_depth: Option<u32>,
         node_settings: NodeConfig,
         global_config: ton_indexer::GlobalConfig,
         jrpc_state: Arc<JrpcState>,
@@ -29,8 +31,12 @@ impl NetworkScanner {
             _ => None,
         };
 
-        let subscriber: Arc<dyn ton_indexer::Subscriber> =
-            BlocksSubscriber::new(kafka_settings, jrpc_state)?;
+        let subscriber: Arc<dyn ton_indexer::Subscriber> = BlocksSubscriber::new(
+            kafka_settings,
+            jrpc_state,
+            Some(&node_settings.db_path),
+            max_transaction_depth,
+        )?;
 
         let indexer = ton_indexer::Engine::new(
             node_settings
@@ -78,11 +84,16 @@ struct BlocksSubscriber {
 }
 
 impl BlocksSubscriber {
-    fn new(config: Option<KafkaConfig>, jrpc_state: Arc<JrpcState>) -> Result<Arc<Self>> {
+    fn new(
+        config: Option<KafkaConfig>,
+        jrpc_state: Arc<JrpcState>,
+        rocksdb_path: Option<&Path>,
+        max_transaction_depth: Option<u32>,
+    ) -> Result<Arc<Self>> {
         let extract_all = matches!(&config, Some(KafkaConfig::Gql(_)));
 
         Ok(Arc::new(Self {
-            handler: BlocksHandler::new(config)?,
+            handler: BlocksHandler::new(config, rocksdb_path, max_transaction_depth)?,
             jrpc_state,
             extract_all,
         }))
@@ -104,7 +115,7 @@ impl BlocksSubscriber {
         }
 
         self.handler
-            .handle_block(block_stuff, block_data, block_proof, shard_state, true)
+            .handle_block(block_stuff, block_data, block_proof, shard_state, true, 100)
             .await
             .context("Failed to handle block")
     }

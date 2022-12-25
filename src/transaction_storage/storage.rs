@@ -1,9 +1,6 @@
-use anyhow::{anyhow, Result};
-use everscale_network::tl::hash;
-use itertools::Itertools;
+use anyhow::Result;
 use rocksdb::{BoundColumnFamily, ColumnFamilyDescriptor, IteratorMode, Options, DB};
 use std::path::{Path, PathBuf};
-use std::string::ToString;
 use std::sync::Arc;
 use ton_types::UInt256;
 
@@ -32,7 +29,7 @@ impl TransactionStorage {
         self.db.cf_handle(&TX_INT_OUT_MSGS).expect("Trust me")
     }
 
-    fn get_tx_boс_cf(&self) -> Arc<BoundColumnFamily> {
+    fn get_tx_boc_cf(&self) -> Arc<BoundColumnFamily> {
         self.db.cf_handle(&TX_BOC).expect("Trust me")
     }
 
@@ -55,14 +52,13 @@ impl TransactionStorage {
         let out_msgs_cf = ColumnFamilyDescriptor::new(TX_INT_OUT_MSGS, Options::default());
         let boc_cf = ColumnFamilyDescriptor::new(TX_BOC, Options::default());
         let depth_cf = ColumnFamilyDescriptor::new(TX_DEPTH, Options::default());
-        println!("hello");
 
         let db = DB::open_cf_descriptors(
             &opts,
             file_db_path,
             vec![ext_in_msg_cf, int_in_msg_cf, out_msgs_cf, boc_cf, depth_cf],
         )?;
-        println!("hello1");
+
         Ok(Arc::new(Self {
             file_db_path: file_db_path.to_path_buf(),
             db: Arc::new(db),
@@ -80,7 +76,7 @@ impl TransactionStorage {
     ) -> Result<()> {
         let int_in_msg_cf = self.get_internal_in_message_cf();
         let ext_in_msg_cf = self.get_external_in_message_cf();
-        let boc_cf = self.get_tx_boс_cf();
+        let boc_cf = self.get_tx_boc_cf();
         let out_msgs_cf = self.get_internal_out_messages_cf();
         let depth_cf = self.get_tx_depth_cf();
 
@@ -89,12 +85,12 @@ impl TransactionStorage {
 
         match (ext_in_msg_hash, int_in_msg_hash) {
             (Some(ext), None) => {
-                self.db.put_cf(&int_in_msg_cf, tx_hash.as_slice(), ext)?;
+                self.db.put_cf(&ext_in_msg_cf, tx_hash.as_slice(), ext)?;
                 self.db
                     .put_cf(&depth_cf, tx_hash.as_slice(), 0u32.to_be_bytes())?;
             }
             (None, Some(int)) => {
-                match self.get_parent_transaction_by_msg_hash(&tx_hash)? {
+                match self.get_parent_transaction_by_msg_hash(&int)? {
                     Some(parent) => {
                         match self.get_depth(&parent)? {
                             Some(depth) => {
@@ -103,7 +99,7 @@ impl TransactionStorage {
                                     anyhow::bail!("Transaction tree is too deep.");
                                     // remove tree here in separate thread.
                                 } else {
-                                    self.db.put_cf(&ext_in_msg_cf, tx_hash, int)?;
+                                    self.db.put_cf(&int_in_msg_cf, tx_hash, int)?;
                                     self.db
                                         .put_cf(&depth_cf, tx_hash, new_depth.to_be_bytes())?;
                                 }
@@ -124,15 +120,15 @@ impl TransactionStorage {
     }
 
     pub fn try_assemble_tree(&self, tx_hash: &UInt256) -> Result<Option<Transaction>> {
-        let external_in_cf = self.get_internal_in_message_cf();
+        let internal_in_cf = self.get_internal_in_message_cf();
 
         let mut node = self.get_plain_node(tx_hash)?;
 
         loop {
-            if let Some(mut n) = node.clone() {
+            if let Some(mut n) = node.as_ref() {
                 let internal_message_opt = self
                     .db
-                    .get_cf(&external_in_cf.clone(), n.tx_hash.as_slice())?;
+                    .get_cf(&internal_in_cf.clone(), n.tx_hash.as_slice())?;
                 let parent_message = match internal_message_opt {
                     Some(in_msg) => UInt256::from_slice(in_msg.as_slice()),
                     _ => return Ok(node),
@@ -146,10 +142,15 @@ impl TransactionStorage {
 
                         for i in &out_msgs {
                             if i == &parent_message {
+                                new_parent.children.push(n.clone());
+                                println!("continue");
                                 continue;
                             }
+                            println!("assemble");
                             self.append_children_transaction_tree(&i, &mut new_parent)?;
                         }
+
+                        node = Some(new_parent);
                     }
                     _ => return Ok(node),
                 }
@@ -181,18 +182,18 @@ impl TransactionStorage {
         &self,
         msg_hash: &UInt256,
         parent_node: &mut Transaction,
-    ) -> Result<Transaction> {
+    ) -> Result<()> {
         let child_hash = self.get_children_transaction_by_msg_hash(msg_hash)?;
         let node_opt = match child_hash {
             Some(hash) => self.get_plain_node(&hash)?,
-            None => return Ok(parent_node.clone()),
+            None => return Ok(()),
         };
 
         if let Some(node) = node_opt {
             let children_out_messages = self.get_tx_out_messages(&node.tx_hash)?;
 
             if children_out_messages.is_empty() {
-                return Ok(parent_node.clone());
+                return Ok(());
             } else {
                 for i in children_out_messages.iter() {
                     let tree_node_opt = match self.get_children_transaction_by_msg_hash(i)? {
@@ -213,9 +214,11 @@ impl TransactionStorage {
             {
                 self.append_children_transaction_tree(message, node)?;
             }
+
+            parent_node.children.push(node);
         }
 
-        Ok(parent_node.clone())
+        Ok(())
     }
 
     fn get_children_transaction_by_msg_hash(&self, msg_hash: &UInt256) -> Result<Option<UInt256>> {
@@ -261,7 +264,7 @@ impl TransactionStorage {
     }
 
     fn get_plain_node(&self, tx_hash: &UInt256) -> Result<Option<Transaction>> {
-        let boc = self.get_tx_boс_cf();
+        let boc = self.get_tx_boc_cf();
         Ok(self
             .db
             .get_cf(&boc, tx_hash.as_slice())?
@@ -296,7 +299,6 @@ pub struct Transaction {
 }
 
 mod tests {
-    use crate::transaction_storage;
     use crate::transaction_storage::storage::TransactionStorage;
     use std::path::Path;
     use ton_types::UInt256;
@@ -308,29 +310,84 @@ mod tests {
             TransactionStorage::new(path, 10).expect("Failed transaction storage");
         let transaction_hash_1 = UInt256::from_slice(
             hex::decode("54f47f19522023404e66999ebfdd029212efb917114579f4687afc40b3adb119")
-                .expect("0")
+                .expect("00")
                 .as_slice(),
         );
         let incoming_message_1 = UInt256::from_slice(
             hex::decode("3d60c92fba3fa3440abd7e2f2ebcf4cd8d9c98c2567cdd0c03b2cadc857e11e4")
-                .expect("1")
+                .expect("01")
                 .as_slice(),
         );
 
-        let y = transaction_storage
+        let outcoming_message_1 = UInt256::from_slice(
+            hex::decode("3d60c92fba3fa3440abd7e2f2ebcf4cd8d9c98c2567cdd0c03b2cadc857e11e3")
+                .expect("001")
+                .as_slice(),
+        );
+
+        let outcoming_message_2 = UInt256::from_slice(
+            hex::decode("3d60c92fba3fa3440abd7e2f2ebcf4cd8d9c98c2567cdd0c03b2cadc857e11ea")
+                .expect("002")
+                .as_slice(),
+        );
+
+        transaction_storage
             .add_transaction(
                 transaction_hash_1.clone(),
                 Some(incoming_message_1),
                 None,
-                &[],
-                &[],
+                &[0, 1, 1, 1],
+                &[outcoming_message_1, outcoming_message_2],
             )
             .expect("3");
+
+        let transaction_hash_2 = UInt256::from_slice(
+            hex::decode("54f47f19522023404e66999ebfdd029212efb917114579f4687afc40b3adb110")
+                .expect("0")
+                .as_slice(),
+        );
+        let incoming_message_2 = UInt256::from_slice(
+            hex::decode("3d60c92fba3fa3440abd7e2f2ebcf4cd8d9c98c2567cdd0c03b2cadc857e11e3")
+                .expect("1")
+                .as_slice(),
+        );
+
+        transaction_storage
+            .add_transaction(
+                transaction_hash_2.clone(),
+                None,
+                Some(incoming_message_2),
+                &[0, 1, 1, 1],
+                &[],
+            )
+            .expect("4");
+
+        let transaction_hash_3 = UInt256::from_slice(
+            hex::decode("54f47f19522023404e66999ebfdd029212efb917114579f4687afc40b3adb1bc")
+                .expect("0")
+                .as_slice(),
+        );
+        let incoming_message_3 = UInt256::from_slice(
+            hex::decode("3d60c92fba3fa3440abd7e2f2ebcf4cd8d9c98c2567cdd0c03b2cadc857e11ea")
+                .expect("1")
+                .as_slice(),
+        );
+
+        transaction_storage
+            .add_transaction(
+                transaction_hash_3.clone(),
+                None,
+                Some(incoming_message_3),
+                &[0, 1, 1, 1],
+                &[],
+            )
+            .expect("4");
+
         let x = transaction_storage
-            .try_assemble_tree(&transaction_hash_1)
+            .try_assemble_tree(&transaction_hash_2)
             .expect("2");
         if let Some(x) = x {
-            println!("{:?}", x.tx_hash.as_slice());
+            println!("{:?}", x);
         }
     }
 }

@@ -20,7 +20,7 @@ impl ArchivesScanner {
         let list = std::fs::read_to_string(list_path)?;
 
         Ok(Self {
-            handler: Arc::new(BlocksHandler::new(Some(kafka_settings))?),
+            handler: Arc::new(BlocksHandler::new(Some(kafka_settings), None, None)?),
             list,
         })
     }
@@ -111,6 +111,7 @@ async fn start_writing_blocks(
                 parsed.block_proof_stuff.as_ref(),
                 None,
                 false,
+                100,
             )
             .await
             .context("Failed to handle block")
