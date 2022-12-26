@@ -57,7 +57,7 @@ impl BlocksHandler {
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
         ignore_prepare_error: bool,
-        max_transaction_depth: u8,
+        max_transaction_depth: u32,
     ) -> Result<()> {
         match self {
             Self::Broxus(producer) => {

@@ -62,9 +62,11 @@ impl Default for ScanType {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct StorageSettings {
-    pub rocksdb_path: String,
-    pub max_tx_storage_depth: u32,
+pub struct TreeProducerFilters {
+    pub max_transaction_width: Option<u32>,
+    pub max_transaction_depth: Option<u32>,
+    pub ignored_senders: Vec<String>,
+    pub ignored_recipients: Vec<String>,
 }
 
 /// TON node settings

@@ -68,12 +68,13 @@ impl TransactionStorage {
 
     pub fn add_transaction(
         &self,
-        tx_hash: UInt256,
-        ext_in_msg_hash: Option<UInt256>,
-        int_in_msg_hash: Option<UInt256>,
+        tx_hash: &UInt256,
+        ext_in_msg_hash: Option<&UInt256>,
+        int_in_msg_hash: Option<&UInt256>,
         boc: &[u8],
         int_out_msgs: &[UInt256],
     ) -> Result<()> {
+        tracing::info!("Adding transaction to tree");
         let int_in_msg_cf = self.get_internal_in_message_cf();
         let ext_in_msg_cf = self.get_external_in_message_cf();
         let boc_cf = self.get_tx_boc_cf();
@@ -143,10 +144,8 @@ impl TransactionStorage {
                         for i in &out_msgs {
                             if i == &parent_message {
                                 new_parent.children.push(n.clone());
-                                println!("continue");
                                 continue;
                             }
-                            println!("assemble");
                             self.append_children_transaction_tree(&i, &mut new_parent)?;
                         }
 
@@ -293,9 +292,28 @@ impl TransactionStorage {
 
 #[derive(Debug, Clone)]
 pub struct Transaction {
-    pub tx_hash: UInt256,
-    pub boc: Vec<u8>,
-    pub children: Vec<Transaction>,
+    tx_hash: UInt256,
+    boc: Vec<u8>,
+    children: Vec<Transaction>,
+}
+
+impl Transaction {
+    pub fn init_transaction_hash(&self) -> &UInt256 {
+        &self.tx_hash
+    }
+
+    pub fn boc(&self) -> &[u8] {
+        self.boc.as_slice()
+    }
+
+    pub fn base_64_boc(&self) -> String {
+        let slice = self.boc.as_slice();
+        base64::encode(slice)
+    }
+
+    pub fn root_children(&self) -> &[Transaction] {
+        self.children.as_slice()
+    }
 }
 
 mod tests {

@@ -81,6 +81,7 @@ struct BlocksSubscriber {
     handler: BlocksHandler,
     jrpc_state: Arc<JrpcState>,
     extract_all: bool,
+    max_transaction_depth: u32,
 }
 
 impl BlocksSubscriber {
@@ -96,6 +97,7 @@ impl BlocksSubscriber {
             handler: BlocksHandler::new(config, rocksdb_path, max_transaction_depth)?,
             jrpc_state,
             extract_all,
+            max_transaction_depth: max_transaction_depth.unwrap_or(100),
         }))
     }
 }
@@ -115,7 +117,14 @@ impl BlocksSubscriber {
         }
 
         self.handler
-            .handle_block(block_stuff, block_data, block_proof, shard_state, true, 100)
+            .handle_block(
+                block_stuff,
+                block_data,
+                block_proof,
+                shard_state,
+                true,
+                self.max_transaction_depth,
+            )
             .await
             .context("Failed to handle block")
     }
