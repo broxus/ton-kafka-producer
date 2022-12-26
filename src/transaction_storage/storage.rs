@@ -1,7 +1,10 @@
 use anyhow::Result;
-use rocksdb::{BoundColumnFamily, ColumnFamilyDescriptor, IteratorMode, Options, DB};
+use rocksdb::{
+    BoundColumnFamily, ColumnFamilyDescriptor, IteratorMode, MergeOperands, Options, DB,
+};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use ton_block::Serializable;
 use ton_types::UInt256;
 
 const TX_EXT_IN_MSG: &str = "tx_external_in_msgs";
@@ -9,6 +12,7 @@ const TX_INT_IN_MSG: &str = "tx_internal_in_msgs";
 const TX_INT_OUT_MSGS: &str = "tx_internal_out_msgs";
 const TX_BOC: &str = "tx_boc";
 const TX_DEPTH: &str = "tx_depth";
+const TX_PROCESSED: &str = "tx_processed";
 
 pub struct TransactionStorage {
     file_db_path: PathBuf,
@@ -37,33 +41,51 @@ impl TransactionStorage {
         self.db.cf_handle(&TX_DEPTH).expect("Trust me")
     }
 
+    fn get_tx_processed_cf(&self) -> Arc<BoundColumnFamily> {
+        self.db.cf_handle(&TX_PROCESSED).expect("trust me")
+    }
+
     pub fn new(file_db_path: &Path, max_depth: u32) -> Result<Arc<TransactionStorage>> {
-        let mut opts = Options::default();
+        let mut db_opts = Options::default();
 
-        opts.set_log_level(rocksdb::LogLevel::Error);
-        opts.set_keep_log_file_num(2);
-        opts.set_recycle_log_file_num(2);
+        db_opts.set_log_level(rocksdb::LogLevel::Error);
+        db_opts.set_keep_log_file_num(2);
+        db_opts.set_recycle_log_file_num(2);
 
-        opts.create_missing_column_families(true);
-        opts.create_if_missing(true);
+        db_opts.create_missing_column_families(true);
+        db_opts.create_if_missing(true);
 
-        let ext_in_msg_cf = ColumnFamilyDescriptor::new(TX_EXT_IN_MSG, Options::default());
-        let int_in_msg_cf = ColumnFamilyDescriptor::new(TX_INT_IN_MSG, Options::default());
-        let out_msgs_cf = ColumnFamilyDescriptor::new(TX_INT_OUT_MSGS, Options::default());
-        let boc_cf = ColumnFamilyDescriptor::new(TX_BOC, Options::default());
-        let depth_cf = ColumnFamilyDescriptor::new(TX_DEPTH, Options::default());
+        let columns = Self::init_columns();
 
-        let db = DB::open_cf_descriptors(
-            &opts,
-            file_db_path,
-            vec![ext_in_msg_cf, int_in_msg_cf, out_msgs_cf, boc_cf, depth_cf],
-        )?;
+        let db = DB::open_cf_descriptors(&db_opts, file_db_path, columns)?;
 
         Ok(Arc::new(Self {
             file_db_path: file_db_path.to_path_buf(),
             db: Arc::new(db),
             max_depth,
         }))
+    }
+
+    fn init_columns() -> Vec<ColumnFamilyDescriptor> {
+        let ext_in_msg_cf = ColumnFamilyDescriptor::new(TX_EXT_IN_MSG, Options::default());
+        let int_in_msg_cf = ColumnFamilyDescriptor::new(TX_INT_IN_MSG, Options::default());
+        let out_msgs_cf = ColumnFamilyDescriptor::new(TX_INT_OUT_MSGS, Options::default());
+        let boc_cf = ColumnFamilyDescriptor::new(TX_BOC, Options::default());
+        let depth_cf = ColumnFamilyDescriptor::new(TX_DEPTH, Options::default());
+
+        let mut processes_cf_opts = Options::default();
+        processes_cf_opts.set_merge_operator_associative("processed_merge", apply_last_merge);
+
+        let processed_cf = ColumnFamilyDescriptor::new(TX_PROCESSED, processes_cf_opts);
+
+        vec![
+            ext_in_msg_cf,
+            int_in_msg_cf,
+            out_msgs_cf,
+            boc_cf,
+            depth_cf,
+            processed_cf,
+        ]
     }
 
     pub fn add_transaction(
@@ -80,6 +102,7 @@ impl TransactionStorage {
         let boc_cf = self.get_tx_boc_cf();
         let out_msgs_cf = self.get_internal_out_messages_cf();
         let depth_cf = self.get_tx_depth_cf();
+        let processed_cf = self.get_tx_processed_cf();
 
         let int_out_msgs = int_out_msgs.iter().map(|x| x.inner()).collect::<Vec<_>>();
         let int_out_msgs = bincode::serialize(int_out_msgs.as_slice())?;
@@ -116,7 +139,20 @@ impl TransactionStorage {
 
         self.db.put_cf(&boc_cf, tx_hash, boc)?;
         self.db.put_cf(&out_msgs_cf, tx_hash, int_out_msgs)?;
+        self.db.put_cf(&processed_cf, tx_hash, &[0])?; //false
 
+        Ok(())
+    }
+
+    pub fn mark_transaction_processed(&self, tx_hash: &UInt256) -> Result<()> {
+        let processed_cf = self.get_tx_processed_cf();
+        self.db.merge_cf(&processed_cf, tx_hash.as_slice(), &[1])?;
+        Ok(())
+    }
+
+    pub fn mark_transaction_not_processed(&self, tx_hash: &UInt256) -> Result<()> {
+        let processed_cf = self.get_tx_processed_cf();
+        self.db.merge_cf(&processed_cf, tx_hash.as_slice(), &[0])?;
         Ok(())
     }
 
@@ -288,6 +324,13 @@ impl TransactionStorage {
             .collect();
         Ok(messages)
     }
+}
+
+fn apply_last_merge(_: &[u8], _: Option<&[u8]>, operands: &mut MergeOperands) -> Option<Vec<u8>> {
+    let mut result: Vec<u8> = Vec::with_capacity(operands.size_hint().0);
+
+    operands.iter().last().map(|x| result.extend_from_slice(x));
+    Some(result)
 }
 
 #[derive(Debug, Clone)]
