@@ -10,7 +10,7 @@ use ton_types::UInt256;
 
 use crate::blocks_handler::kafka_producer::KafkaProducer;
 use crate::config::KafkaProducerConfig;
-use crate::transaction_storage::storage::TransactionStorage;
+use crate::transaction_storage::storage::{TransactionStorage, Tree};
 
 pub struct TxTreeProducer {
     producer: Option<KafkaProducer>,
@@ -150,14 +150,25 @@ impl TxTreeProducer {
         }
 
         if transaction.out_msgs.is_empty() || all_messages_external {
-            tracing::info!("Assembling tree for transaction : {hex_hash}");
             let tree = self.transaction_storage.try_assemble_tree(&tx_hash)?;
-            if let Some(tree) = tree {
-                tracing::info!(
-                    "Init transaction {:?}. Children len : {}",
-                    hex::encode(tree.init_transaction_hash().as_slice()),
-                    tree.root_children().len()
-                );
+            match tree {
+                Tree::Full(transaction) => {
+                    tracing::info!(
+                        "Assembled full tree {:?}. Children len : {}",
+                        hex::encode(transaction.init_transaction_hash().as_slice()),
+                        transaction.root_children().len()
+                    );
+                }
+                Tree::Partial(transaction) => {
+                    tracing::info!(
+                        "Assembled partial tree {:?}. Children len : {}",
+                        hex::encode(transaction.init_transaction_hash().as_slice()),
+                        transaction.root_children().len()
+                    );
+                }
+                Tree::Empty => {
+                    tracing::info!("Tree is empty : {}", hex::encode(tx_hash.as_slice()));
+                }
             }
         }
 

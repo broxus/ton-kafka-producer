@@ -1,4 +1,6 @@
-use anyhow::Result;
+//use anyhow::Result;
+
+use anyhow::anyhow;
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, IteratorMode, MergeOperands, Options, DB,
 };
@@ -6,6 +8,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use ton_block::Serializable;
 use ton_types::UInt256;
+
+use crate::utils::error::Result;
+use crate::utils::error::StorageError;
 
 const TX_EXT_IN_MSG: &str = "tx_external_in_msgs";
 const TX_INT_IN_MSG: &str = "tx_internal_in_msgs";
@@ -73,10 +78,10 @@ impl TransactionStorage {
         let boc_cf = ColumnFamilyDescriptor::new(TX_BOC, Options::default());
         let depth_cf = ColumnFamilyDescriptor::new(TX_DEPTH, Options::default());
 
-        let mut processes_cf_opts = Options::default();
-        processes_cf_opts.set_merge_operator_associative("processed_merge", apply_last_merge);
+        //let mut processes_cf_opts = Options::default();
+        //processes_cf_opts.set_merge_operator_associative("processed_merge", apply_last_merge);
 
-        let processed_cf = ColumnFamilyDescriptor::new(TX_PROCESSED, processes_cf_opts);
+        let processed_cf = ColumnFamilyDescriptor::new(TX_PROCESSED, Options::default());
 
         vec![
             ext_in_msg_cf,
@@ -120,7 +125,7 @@ impl TransactionStorage {
                             Some(depth) => {
                                 let new_depth = depth + 1;
                                 if new_depth > self.max_depth {
-                                    anyhow::bail!("Transaction tree is too deep.");
+                                    return Err(StorageError::TransactionTreeTooDeep(new_depth));
                                     // remove tree here in separate thread.
                                 } else {
                                     self.db.put_cf(&int_in_msg_cf, tx_hash, int)?;
@@ -128,13 +133,21 @@ impl TransactionStorage {
                                         .put_cf(&depth_cf, tx_hash, new_depth.to_be_bytes())?;
                                 }
                             }
-                            None => anyhow::bail!("Failed to check transaction depth"),
+                            None => {
+                                return Err(StorageError::TransactionDepthMissing(hex::encode(
+                                    parent.as_slice(),
+                                )))
+                            }
                         }
                     }
-                    None => anyhow::bail!("Corrupted data. Failed to find parent transaction"),
+                    None => {
+                        return Err(StorageError::ParentTransactionMissing(hex::encode(
+                            int.as_slice(),
+                        )))
+                    }
                 }
             }
-            _ => anyhow::bail!("Corrupted transaction. No internal or external in message"),
+            _ => return Err(StorageError::BadTransaction),
         }
 
         self.db.put_cf(&boc_cf, tx_hash, boc)?;
@@ -144,53 +157,69 @@ impl TransactionStorage {
         Ok(())
     }
 
-    pub fn mark_transaction_processed(&self, tx_hash: &UInt256) -> Result<()> {
+    fn mark_transaction_processed(&self, tx_hash: &UInt256) -> Result<()> {
         let processed_cf = self.get_tx_processed_cf();
-        self.db.merge_cf(&processed_cf, tx_hash.as_slice(), &[1])?;
+        self.db.put_cf(&processed_cf, tx_hash.as_slice(), &[1])?;
         Ok(())
     }
 
-    pub fn mark_transaction_not_processed(&self, tx_hash: &UInt256) -> Result<()> {
+    fn mark_transaction_not_processed(&self, tx_hash: &UInt256) -> Result<()> {
         let processed_cf = self.get_tx_processed_cf();
-        self.db.merge_cf(&processed_cf, tx_hash.as_slice(), &[0])?;
+        self.db.put_cf(&processed_cf, tx_hash.as_slice(), &[0])?;
         Ok(())
     }
 
-    pub fn try_assemble_tree(&self, tx_hash: &UInt256) -> Result<Option<Transaction>> {
-        let internal_in_cf = self.get_internal_in_message_cf();
+    fn rollback_tree(&self, transaction: &Transaction) -> Result<()> {
+        self.mark_transaction_not_processed(&transaction.tx_hash)?;
+        for t in transaction.children.iter() {
+            self.rollback_tree(t)?
+        }
+        Ok(())
+    }
 
-        let mut node = self.get_plain_node(tx_hash)?;
+    pub fn try_assemble_tree(&self, tx_hash: &UInt256) -> Result<Tree> {
+        let mut root: Option<Transaction> = None;
 
         loop {
-            if let Some(mut n) = node.as_ref() {
-                let internal_message_opt = self
-                    .db
-                    .get_cf(&internal_in_cf.clone(), n.tx_hash.as_slice())?;
-                let parent_message = match internal_message_opt {
-                    Some(in_msg) => UInt256::from_slice(in_msg.as_slice()),
-                    _ => return Ok(node),
+            if root.is_none() {
+                let node = self.get_plain_node(tx_hash)?;
+                if node.is_none() {
+                    return Ok(Tree::Empty);
+                }
+                root = node;
+                continue;
+            }
+
+            let current_root = root.unwrap(); // always Some(_) because we check it on previous step
+
+            let internal_message_opt = self.get_external_in_message(tx_hash)?;
+            let external_message_opt = self.get_external_in_message(tx_hash)?;
+
+            let (parent_transaction, int_message) =
+                match (internal_message_opt, external_message_opt) {
+                    (Some(message), None) => (self.find_parent_transaction(&message)?, message),
+                    (None, Some(_)) => return Ok(Tree::Full(current_root)),
+                    _ => return Err(StorageError::BadTransaction),
                 };
 
-                let new_parent = self.find_parent_transaction(&parent_message)?;
+            if parent_transaction.is_none() {
+                return Ok(Tree::Partial(current_root));
+            }
 
-                match new_parent {
-                    Some(mut new_parent) => {
-                        let out_msgs = self.get_tx_out_messages(&new_parent.tx_hash)?;
+            match parent_transaction {
+                None => return Ok(Tree::Partial(current_root)),
+                Some(mut parent) => {
+                    let out_msgs = self.get_tx_out_messages(&parent.tx_hash)?;
 
-                        for i in &out_msgs {
-                            if i == &parent_message {
-                                new_parent.children.push(n.clone());
-                                continue;
-                            }
-                            self.append_children_transaction_tree(&i, &mut new_parent)?;
+                    'out_mes: for i in &out_msgs {
+                        if i == &int_message {
+                            parent.children.push(current_root.clone());
+                            continue 'out_mes;
                         }
-
-                        node = Some(new_parent);
+                        self.append_children_transaction_tree(&i, &mut parent)?;
                     }
-                    _ => return Ok(node),
+                    root = Some(parent);
                 }
-            } else {
-                return Ok(None);
             }
         }
     }
@@ -310,6 +339,24 @@ impl TransactionStorage {
             }))
     }
 
+    fn get_internal_in_message(&self, tx_hash: &UInt256) -> Result<Option<UInt256>> {
+        let int_in_msg = self.get_internal_in_message_cf();
+        let message = self
+            .db
+            .get_cf(&int_in_msg, tx_hash.as_slice())?
+            .map(|x| UInt256::from_slice(x.as_slice()));
+        Ok(message)
+    }
+
+    fn get_external_in_message(&self, tx_hash: &UInt256) -> Result<Option<UInt256>> {
+        let ext_in_msg = self.get_external_in_message_cf();
+        let message = self
+            .db
+            .get_cf(&ext_in_msg, tx_hash.as_slice())?
+            .map(|x| UInt256::from_slice(x.as_slice()));
+        Ok(message)
+    }
+
     fn get_tx_out_messages(&self, tx_hash: &UInt256) -> Result<Vec<UInt256>> {
         let out_msg_cf = self.get_internal_out_messages_cf();
 
@@ -326,11 +373,10 @@ impl TransactionStorage {
     }
 }
 
-fn apply_last_merge(_: &[u8], _: Option<&[u8]>, operands: &mut MergeOperands) -> Option<Vec<u8>> {
-    let mut result: Vec<u8> = Vec::with_capacity(operands.size_hint().0);
-
-    operands.iter().last().map(|x| result.extend_from_slice(x));
-    Some(result)
+pub enum Tree {
+    Full(Transaction),
+    Partial(Transaction),
+    Empty,
 }
 
 #[derive(Debug, Clone)]
@@ -359,7 +405,7 @@ impl Transaction {
     }
 }
 
-mod tests {
+pub mod tests {
     use crate::transaction_storage::storage::TransactionStorage;
     use std::path::Path;
     use ton_types::UInt256;
