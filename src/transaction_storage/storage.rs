@@ -1,11 +1,8 @@
-//use anyhow::Result;
-
-use anyhow::anyhow;
-use rocksdb::{
-    BoundColumnFamily, ColumnFamilyDescriptor, IteratorMode, MergeOperands, Options, DB,
-};
+use futures_util::stream::FuturesOrdered;
+use rocksdb::{BoundColumnFamily, ColumnFamilyDescriptor, IteratorMode, Options, DB};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tokio::task::unconstrained;
 use ton_block::Serializable;
 use ton_types::UInt256;
 
@@ -22,7 +19,7 @@ const TX_PROCESSED: &str = "tx_processed";
 pub struct TransactionStorage {
     file_db_path: PathBuf,
     db: Arc<DB>,
-    max_depth: u32,
+    applied_rules: StorageRules,
 }
 
 impl TransactionStorage {
@@ -50,7 +47,11 @@ impl TransactionStorage {
         self.db.cf_handle(&TX_PROCESSED).expect("trust me")
     }
 
-    pub fn new(file_db_path: &Path, max_depth: u32) -> Result<Arc<TransactionStorage>> {
+    pub fn new(
+        file_db_path: &Path,
+        max_depth: u32,
+        search_for_parent: bool,
+    ) -> Result<Arc<TransactionStorage>> {
         let mut db_opts = Options::default();
 
         db_opts.set_log_level(rocksdb::LogLevel::Error);
@@ -63,11 +64,15 @@ impl TransactionStorage {
         let columns = Self::init_columns();
 
         let db = DB::open_cf_descriptors(&db_opts, file_db_path, columns)?;
+        let applied_rules = StorageRules {
+            max_tx_depth: max_depth,
+            search_for_parent,
+        };
 
         Ok(Arc::new(Self {
             file_db_path: file_db_path.to_path_buf(),
             db: Arc::new(db),
-            max_depth,
+            applied_rules,
         }))
     }
 
@@ -101,7 +106,6 @@ impl TransactionStorage {
         boc: &[u8],
         int_out_msgs: &[UInt256],
     ) -> Result<()> {
-        tracing::info!("Adding transaction to tree");
         let int_in_msg_cf = self.get_internal_in_message_cf();
         let ext_in_msg_cf = self.get_external_in_message_cf();
         let boc_cf = self.get_tx_boc_cf();
@@ -112,50 +116,58 @@ impl TransactionStorage {
         let int_out_msgs = int_out_msgs.iter().map(|x| x.inner()).collect::<Vec<_>>();
         let int_out_msgs = bincode::serialize(int_out_msgs.as_slice())?;
 
-        match (ext_in_msg_hash, int_in_msg_hash) {
+        tracing::debug!(
+            "External in msg: {:?}, Internal in msg: {:?}",
+            ext_in_msg_hash,
+            int_in_msg_hash
+        );
+        let depth = match (ext_in_msg_hash, int_in_msg_hash) {
             (Some(ext), None) => {
-                self.db.put_cf(&ext_in_msg_cf, tx_hash.as_slice(), ext)?;
                 self.db
-                    .put_cf(&depth_cf, tx_hash.as_slice(), 0u32.to_be_bytes())?;
+                    .put_cf(&ext_in_msg_cf, tx_hash.as_slice(), ext.as_slice())?;
+                1
             }
-            (None, Some(int)) => {
-                match self.get_parent_transaction_by_msg_hash(&int)? {
-                    Some(parent) => {
-                        match self.get_depth(&parent)? {
-                            Some(depth) => {
-                                let new_depth = depth + 1;
-                                if new_depth > self.max_depth {
-                                    return Err(StorageError::TransactionTreeTooDeep(new_depth));
-                                    // remove tree here in separate thread.
-                                } else {
-                                    self.db.put_cf(&int_in_msg_cf, tx_hash, int)?;
-                                    self.db
-                                        .put_cf(&depth_cf, tx_hash, new_depth.to_be_bytes())?;
-                                }
-                            }
-                            None => {
-                                return Err(StorageError::TransactionDepthMissing(hex::encode(
-                                    parent.as_slice(),
-                                )))
-                            }
+            (None, Some(int)) => match self.get_parent_transaction_by_msg_hash(int)? {
+                Some(parent) => {
+                    let parent_depth = self.get_depth(&parent)?;
+                    match parent_depth {
+                        Some(depth) => {
+                            self.db
+                                .put_cf(&int_in_msg_cf, tx_hash.as_slice(), int.as_slice())?;
+                            depth + 1
+                        }
+                        None => {
+                            return Err(StorageError::TransactionDepthMissing(hex::encode(
+                                parent.as_slice(),
+                            )))
                         }
                     }
-                    None => {
-                        return Err(StorageError::ParentTransactionMissing(hex::encode(
-                            int.as_slice(),
-                        )))
-                    }
                 }
-            }
+                None if !self.applied_rules.search_for_parent => {
+                    self.db
+                        .put_cf(&int_in_msg_cf, tx_hash.as_slice(), int.as_slice())?;
+                    0
+                }
+                _ => {
+                    return Err(StorageError::ParentTransactionMissing(hex::encode(
+                        int.as_slice(),
+                    )))
+                }
+            },
             _ => return Err(StorageError::BadTransaction),
-        }
+        };
 
+        self.db.put_cf(&depth_cf, tx_hash, depth.to_be_bytes())?;
         self.db.put_cf(&boc_cf, tx_hash, boc)?;
         self.db.put_cf(&out_msgs_cf, tx_hash, int_out_msgs)?;
         self.db.put_cf(&processed_cf, tx_hash, &[0])?; //false
 
         Ok(())
     }
+
+    // pub fn recalc_tree_depth(&self, ) -> Result<()> {
+    //
+    // }
 
     fn mark_transaction_processed(&self, tx_hash: &UInt256) -> Result<()> {
         let processed_cf = self.get_tx_processed_cf();
@@ -169,6 +181,14 @@ impl TransactionStorage {
         Ok(())
     }
 
+    fn mark_tree_as_processed(&self, transaction: &Transaction) -> Result<()> {
+        self.mark_transaction_processed(&transaction.tx_hash)?;
+        for t in transaction.children.iter() {
+            self.mark_tree_as_processed(t)?
+        }
+        Ok(())
+    }
+
     fn rollback_tree(&self, transaction: &Transaction) -> Result<()> {
         self.mark_transaction_not_processed(&transaction.tx_hash)?;
         for t in transaction.children.iter() {
@@ -177,13 +197,92 @@ impl TransactionStorage {
         Ok(())
     }
 
+    pub fn clean_transaction_tree(&self, transaction: &Transaction) -> Result<()> {
+        tracing::info!(
+            "Cleaning transaction tree: {}",
+            hex::encode(transaction.tx_hash.inner())
+        );
+
+        let int_in_msg_cf = self.get_internal_in_message_cf();
+        let ext_in_msg_cf = self.get_external_in_message_cf();
+        let boc_cf = self.get_tx_boc_cf();
+        let out_msgs_cf = self.get_internal_out_messages_cf();
+        let depth_cf = self.get_tx_depth_cf();
+        let processed_cf = self.get_tx_processed_cf();
+
+        let columns = [
+            int_in_msg_cf,
+            ext_in_msg_cf,
+            boc_cf,
+            out_msgs_cf,
+            depth_cf,
+            processed_cf,
+        ];
+
+        for c in columns {
+            self.db.delete_cf(&c, transaction.tx_hash.as_slice());
+        }
+
+        if !transaction.children.is_empty() {
+            for i in transaction.children.iter() {
+                self.clean_transaction_tree(i)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn try_reassemble_pending_trees(&self) -> Result<Vec<Tree>> {
+        let out_messages_cf = self.get_external_in_message_cf();
+        let mut trees = Vec::new();
+
+        //let sem = Arc::new(tokio::sync::Semaphore::new(10));
+        //let mut futures_ordered = FuturesOrdered::new();
+
+        for item in self.db.iterator_cf(&out_messages_cf, IteratorMode::Start) {
+            //let sem = sem.clone();
+            match item {
+                Ok((tx_hash, _)) => {
+                    let tx_hash = UInt256::from_slice(tx_hash.as_ref());
+                    let maybe_tree = self.try_assemble_tree(&tx_hash);
+                    match maybe_tree {
+                        Ok(tree) => {
+                            if matches!(tree, Tree::Full(_)) {
+                                trees.push(tree);
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to reassemble tree. Err: {e}");
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Failed to get pending external in messages. Err: {e}");
+                    break;
+                }
+            }
+        }
+
+        Ok(trees)
+    }
+
     pub fn try_assemble_tree(&self, tx_hash: &UInt256) -> Result<Tree> {
         let mut root: Option<Transaction> = None;
 
         loop {
+            tracing::info!(
+                "Started assemble loop. Root is {}",
+                root.as_ref()
+                    .map(|x| hex::encode(x.tx_hash.inner()))
+                    .unwrap_or_default()
+            );
             if root.is_none() {
                 let node = self.get_plain_node(tx_hash)?;
                 if node.is_none() {
+                    tracing::error!(
+                        "Node is empty. Cant find transaction for tx_hash: {}",
+                        hex::encode(tx_hash.inner())
+                    );
                     return Ok(Tree::Empty);
                 }
                 root = node;
@@ -191,35 +290,49 @@ impl TransactionStorage {
             }
 
             let current_root = root.unwrap(); // always Some(_) because we check it on previous step
+            tracing::info!("Found transaction");
 
-            let internal_message_opt = self.get_external_in_message(tx_hash)?;
+            let internal_message_opt = self.get_internal_in_message(tx_hash)?;
             let external_message_opt = self.get_external_in_message(tx_hash)?;
+
+            tracing::info!(
+                "Found internal and external message. {:?} {:?}",
+                internal_message_opt.as_ref(),
+                external_message_opt.as_ref()
+            );
 
             let (parent_transaction, int_message) =
                 match (internal_message_opt, external_message_opt) {
                     (Some(message), None) => (self.find_parent_transaction(&message)?, message),
-                    (None, Some(_)) => return Ok(Tree::Full(current_root)),
+                    (None, Some(_)) => {
+                        self.mark_tree_as_processed(&current_root)?;
+                        return Ok(Tree::Full(current_root));
+                    }
                     _ => return Err(StorageError::BadTransaction),
                 };
 
-            if parent_transaction.is_none() {
-                return Ok(Tree::Partial(current_root));
-            }
+            if let Some(mut parent) = parent_transaction {
+                tracing::info!(
+                    "Found parent transaction. {}",
+                    hex::encode(parent.tx_hash.inner())
+                );
+                let out_msgs = self.get_tx_out_messages(&parent.tx_hash)?;
 
-            match parent_transaction {
-                None => return Ok(Tree::Partial(current_root)),
-                Some(mut parent) => {
-                    let out_msgs = self.get_tx_out_messages(&parent.tx_hash)?;
-
-                    'out_mes: for i in &out_msgs {
-                        if i == &int_message {
-                            parent.children.push(current_root.clone());
-                            continue 'out_mes;
-                        }
-                        self.append_children_transaction_tree(&i, &mut parent)?;
+                'out_mes: for i in &out_msgs {
+                    if i == &int_message {
+                        parent.children.push(current_root.clone());
+                        continue 'out_mes;
                     }
-                    root = Some(parent);
+                    tracing::info!(
+                        "Appending child to parent. Out message hash: {}",
+                        hex::encode(i.inner())
+                    );
+                    self.append_children_transaction_tree(&i, &mut parent)?;
                 }
+                root = Some(parent);
+            } else {
+                tracing::info!("No parent transaction stored. Partial tree");
+                return Ok(Tree::Partial(current_root));
             }
         }
     }
@@ -235,6 +348,10 @@ impl TransactionStorage {
     }
 
     fn find_parent_transaction(&self, msg_hash: &UInt256) -> Result<Option<Transaction>> {
+        tracing::info!(
+            "Trying to find parent transaction. Message hash: {}",
+            hex::encode(msg_hash.inner())
+        );
         if let Some(hash) = self.get_parent_transaction_by_msg_hash(&msg_hash)? {
             self.get_plain_node(&hash)
         } else {
@@ -266,6 +383,10 @@ impl TransactionStorage {
                     };
 
                     if let Some(tree_node_opt) = tree_node_opt {
+                        tracing::info!(
+                            "Appending child {}",
+                            hex::encode(tree_node_opt.tx_hash.inner())
+                        );
                         parent_node.children.push(tree_node_opt);
                     }
                 }
@@ -405,8 +526,15 @@ impl Transaction {
     }
 }
 
+struct StorageRules {
+    max_tx_depth: u32,
+    search_for_parent: bool,
+}
+
 pub mod tests {
     use crate::transaction_storage::storage::TransactionStorage;
+    use futures_util::SinkExt;
+    use rocksdb::{Options, DB};
     use std::path::Path;
     use ton_types::UInt256;
 
@@ -414,7 +542,7 @@ pub mod tests {
     pub async fn test() {
         let path = Path::new("./test_db");
         let transaction_storage =
-            TransactionStorage::new(path, 10).expect("Failed transaction storage");
+            TransactionStorage::new(path, 10, false).expect("Failed transaction storage");
         let transaction_hash_1 = UInt256::from_slice(
             hex::decode("54f47f19522023404e66999ebfdd029212efb917114579f4687afc40b3adb119")
                 .expect("00")
@@ -440,8 +568,8 @@ pub mod tests {
 
         transaction_storage
             .add_transaction(
-                transaction_hash_1.clone(),
-                Some(incoming_message_1),
+                &transaction_hash_1,
+                Some(&incoming_message_1),
                 None,
                 &[0, 1, 1, 1],
                 &[outcoming_message_1, outcoming_message_2],
@@ -461,9 +589,9 @@ pub mod tests {
 
         transaction_storage
             .add_transaction(
-                transaction_hash_2.clone(),
+                &transaction_hash_2,
                 None,
-                Some(incoming_message_2),
+                Some(&incoming_message_2),
                 &[0, 1, 1, 1],
                 &[],
             )
@@ -482,9 +610,9 @@ pub mod tests {
 
         transaction_storage
             .add_transaction(
-                transaction_hash_3.clone(),
+                &transaction_hash_3,
                 None,
-                Some(incoming_message_3),
+                Some(&incoming_message_3),
                 &[0, 1, 1, 1],
                 &[],
             )
@@ -493,8 +621,49 @@ pub mod tests {
         let x = transaction_storage
             .try_assemble_tree(&transaction_hash_2)
             .expect("2");
-        if let Some(x) = x {
-            println!("{:?}", x);
+        // if let Some(x) = x {
+        //     println!("{:?}", x);
+        // }
+    }
+
+    #[tokio::test]
+    pub async fn get_transaction_data() {
+        let tx_hash = "ad836b087e5b644aaa5078aa8040e8a9ed1699739eb28f0f83ce91a606cbfe3a";
+        let transaction = hex::decode(tx_hash).expect("decode");
+        let path = Path::new("./db");
+
+        let mut db_opts = Options::default();
+
+        db_opts.set_log_level(rocksdb::LogLevel::Error);
+        db_opts.set_keep_log_file_num(2);
+        db_opts.set_recycle_log_file_num(2);
+
+        db_opts.create_missing_column_families(true);
+        db_opts.create_if_missing(true);
+
+        let columns = TransactionStorage::init_columns();
+
+        let db = DB::open_cf_descriptors(&db_opts, path, columns).expect("descr");
+
+        const TX_EXT_IN_MSG: &str = "tx_external_in_msgs";
+        const TX_INT_IN_MSG: &str = "tx_internal_in_msgs";
+        const TX_INT_OUT_MSGS: &str = "tx_internal_out_msgs";
+        const TX_BOC: &str = "tx_boc";
+        const TX_DEPTH: &str = "tx_depth";
+        const TX_PROCESSED: &str = "tx_processed";
+
+        let vec = vec![
+            db.cf_handle(TX_EXT_IN_MSG).expect("TX_EXT_IN_MSG"),
+            db.cf_handle(TX_INT_IN_MSG).expect("TX_INT_IN_MSG"),
+            db.cf_handle(TX_INT_OUT_MSGS).expect("TX_INT_OUT_MSGS"),
+            db.cf_handle(TX_BOC).expect("TX_BOC"),
+            db.cf_handle(TX_DEPTH).expect("TX_DEPTH"),
+            db.cf_handle(TX_PROCESSED).expect("TX_PROCESSED"),
+        ];
+
+        for i in vec.iter() {
+            let x = db.get_cf(i, transaction.as_slice()).expect("column");
+            println!("{:?}", x)
         }
     }
 }
