@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod archive;
 pub mod archives_scanner;
 mod blocks_handler;

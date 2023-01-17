@@ -12,9 +12,17 @@ use crate::blocks_handler::kafka_producer::KafkaProducer;
 use crate::config::KafkaProducerConfig;
 use crate::transaction_storage::storage::{TransactionStorage, Tree};
 
+const IGNORED_ADDRESSES: [&str; 3] = [
+    "-1:5555555555555555555555555555555555555555555555555555555555555555",
+    "-1:3333333333333333333333333333333333333333333333333333333333333333",
+    "-1:0000000000000000000000000000000000000000000000000000000000000000",
+];
+
 pub struct TxTreeProducer {
     producer: Option<KafkaProducer>,
     transaction_storage: Arc<TransactionStorage>,
+    ignored_recipients: Vec<MsgAddressInt>,
+    ignored_senders: Vec<MsgAddressInt>,
 }
 
 impl TxTreeProducer {
@@ -28,8 +36,18 @@ impl TxTreeProducer {
         let transaction_storage = TransactionStorage::new(storage_path, max_store_depth, false)?;
         let ts_cloned = transaction_storage.clone();
 
+        let ignored_recipients = IGNORED_ADDRESSES
+            .iter()
+            .filter_map(|x| MsgAddressInt::from_str(x).ok())
+            .collect::<Vec<_>>();
+
+        let ignored_senders = IGNORED_ADDRESSES
+            .iter()
+            .filter_map(|x| MsgAddressInt::from_str(x).ok())
+            .collect::<Vec<_>>();
+
         tokio::spawn(async move {
-            match reassemble_skipped_transactions(&ts_cloned).await {
+            match reassemble_skipped_transactions(ts_cloned).await {
                 Ok(_) => (),
                 Err(e) => tracing::error!("Failed to complete reassembling. Err: {e}"),
             }
@@ -38,6 +56,8 @@ impl TxTreeProducer {
         Ok(Self {
             producer: None,
             transaction_storage,
+            ignored_recipients,
+            ignored_senders,
         })
     }
 
@@ -48,36 +68,26 @@ impl TxTreeProducer {
         max_horizontal_transactions: u32,
     ) -> Result<()> {
         let block_extra = block.read_extra()?;
-        let ignored_1 = MsgAddressInt::from_str(
-            "-1:5555555555555555555555555555555555555555555555555555555555555555",
-        )?;
-        let ignored_2 = MsgAddressInt::from_str(
-            "-1:3333333333333333333333333333333333333333333333333333333333333333",
-        )?;
-
-        let ignored_3 = MsgAddressInt::from_str(
-            "-1:0000000000000000000000000000000000000000000000000000000000000000",
-        )?;
-
-        let ignored_recipients = vec![ignored_1.clone(), ignored_2.clone(), ignored_3.clone()];
-        let ignored_senders = vec![ignored_1, ignored_2, ignored_3];
-
         block_extra
             .read_account_blocks()?
             .iterate_objects(|account_block| {
                 account_block.transactions().iterate_objects(|tx| {
                     let tx = &tx.inner();
                     let description = tx.description.read_struct()?;
-                    if matches!(description, TransactionDescr::Ordinary(_)) {
-                        match self.handle_transaction(
-                            tx,
-                            max_horizontal_transactions,
-                            &ignored_senders,
-                            &ignored_recipients,
-                        ) {
-                            Ok(_) => (),
-                            Err(e) => tracing::info!("Failed: {e:?}"),
-                        };
+
+                    match description {
+                        TransactionDescr::Ordinary(_) | TransactionDescr::TickTock(_) => {
+                            match self.handle_transaction(
+                                tx,
+                                max_horizontal_transactions,
+                                &self.ignored_senders,
+                                &self.ignored_recipients,
+                            ) {
+                                Ok(_) => (),
+                                Err(e) => tracing::info!("Failed: {e:?}"),
+                            };
+                        }
+                        _ => (),
                     }
 
                     Ok(true)
@@ -95,11 +105,15 @@ impl TxTreeProducer {
         ignored_senders: &[MsgAddressInt],
         ignored_recipients: &[MsgAddressInt],
     ) -> Result<()> {
-        let tx_cell = transaction.serialize()?;
-        let tx_hash = tx_cell.hash(ton_types::MAX_LEVEL as usize);
+        let start = broxus_util::now_ms_u64();
+
+        let tx_hash = transaction.hash()?;
+
         let hex_hash = hex::encode(tx_hash.as_slice());
         tracing::debug!("Handling ordinary transaction: {hex_hash}");
-        let boc = tx_cell.write_to_bytes()?;
+        let boc = transaction.serialize()?.write_to_bytes()?;
+        let wtb = broxus_util::now_ms_u64();
+        tracing::debug!("Write tx to boc: {} ms", wtb - start);
 
         let tx_out_message_size = transaction.out_msgs.len()?;
 
@@ -144,6 +158,9 @@ impl TxTreeProducer {
                 };
                 match self.transaction_storage.add_transaction(
                     &tx_hash,
+                    transaction.lt,
+                    &transaction.prev_trans_hash,
+                    transaction.prev_trans_lt,
                     external_in,
                     internal_in,
                     boc.as_slice(),
@@ -155,6 +172,9 @@ impl TxTreeProducer {
             }
             _ => tracing::info!("No internal message: {hex_hash}"),
         }
+
+        let messages = broxus_util::now_ms_u64();
+        //tracing::warn!("Processing transaction messages: {} ms", messages - start);
 
         if transaction.out_msgs.is_empty() || all_messages_external {
             //tracing::info!("Assembling tree for transaction: {hex_hash}");
@@ -185,32 +205,38 @@ impl TxTreeProducer {
     }
 }
 
-pub async fn reassemble_skipped_transactions(storage: &TransactionStorage) -> Result<()> {
+pub async fn reassemble_skipped_transactions(storage: Arc<TransactionStorage>) -> Result<()> {
     loop {
-        tracing::info!("Reassembling loop triggered");
         let trees = storage.try_reassemble_pending_trees()?;
         for tree in trees.iter() {
             match tree {
                 Tree::Full(transaction) => {
-                    tracing::debug!(
-                        "Loop triggered. Assembled full tree {:?}. Children len : {}",
-                        hex::encode(transaction.init_transaction_hash().as_slice()),
-                        transaction.root_children().len()
-                    );
-                    storage.clean_transaction_tree(transaction)?;
+                    if transaction.root_children().len() > 0 {
+                        tracing::warn!(
+                            "Loop triggered. Assembled full tree {:?}. Children len : {}",
+                            hex::encode(transaction.init_transaction_hash().as_slice()),
+                            transaction.root_children().len()
+                        );
+
+                        let st = storage.clone();
+                        let tx = transaction.clone();
+                        tokio::spawn(async move {
+                            st.clean_transaction_tree(&tx);
+                        });
+                    }
                 }
                 Tree::Partial(transaction) => {
-                    tracing::debug!(
+                    tracing::warn!(
                         "Loop triggered. Assembled partial tree {:?}. Children len : {}",
                         hex::encode(transaction.init_transaction_hash().as_slice()),
                         transaction.root_children().len()
                     );
                 }
                 Tree::Empty => {
-                    tracing::debug!("Loop triggered. Tree is empty",);
+                    tracing::warn!("Loop triggered. Tree is empty",);
                 }
             }
         }
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        tokio::time::sleep(Duration::from_secs(5)).await;
     }
 }
