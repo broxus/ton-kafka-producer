@@ -7,10 +7,12 @@ use ton_block::{
     GetRepresentationHash, HashmapAugType, MsgAddressInt, Serializable, Transaction,
     TransactionDescr,
 };
+use ton_types::UInt256;
 
 use crate::blocks_handler::kafka_producer::KafkaProducer;
 use crate::config::KafkaProducerConfig;
-use crate::transaction_storage::storage::{TransactionStorage, Tree};
+use crate::models::{TransactionNode, Tree};
+use crate::transaction_storage::storage::TransactionStorage;
 
 const IGNORED_ADDRESSES: [&str; 3] = [
     "-1:5555555555555555555555555555555555555555555555555555555555555555",
@@ -146,7 +148,9 @@ impl TxTreeProducer {
                     if message.as_ref().is_internal() {
                         all_messages_external = false;
                     }
-                    out_msgs.push(message.hash()?);
+                    let hash = message.0.hash()?;
+
+                    out_msgs.push(hash);
                     Ok(true)
                 })?;
 
@@ -159,46 +163,16 @@ impl TxTreeProducer {
                 match self.transaction_storage.add_transaction(
                     &tx_hash,
                     transaction.lt,
-                    &transaction.prev_trans_hash,
-                    transaction.prev_trans_lt,
                     external_in,
                     internal_in,
                     boc.as_slice(),
-                    out_msgs.as_slice(),
+                    out_msgs,
                 ) {
                     Ok(_) => (),
                     Err(e) => tracing::error!("Failed to add transaction: {e:?}"),
                 }
             }
-            _ => tracing::info!("No internal message: {hex_hash}"),
-        }
-
-        let messages = broxus_util::now_ms_u64();
-        //tracing::warn!("Processing transaction messages: {} ms", messages - start);
-
-        if transaction.out_msgs.is_empty() || all_messages_external {
-            //tracing::info!("Assembling tree for transaction: {hex_hash}");
-            // let tree = self.transaction_storage.try_assemble_tree(&tx_hash)?;
-            // match tree {
-            //     Tree::Full(transaction) => {
-            //         tracing::info!(
-            //             "Assembled full tree {:?}. Children len : {}",
-            //             hex::encode(transaction.init_transaction_hash().as_slice()),
-            //             transaction.root_children().len()
-            //         );
-            //     }
-            //     Tree::Partial(transaction) => {
-            //         tracing::info!(
-            //             "Assembled partial tree {:?}. Children len : {}",
-            //             hex::encode(transaction.init_transaction_hash().as_slice()),
-            //             transaction.root_children().len()
-            //         );
-            //
-            //     }
-            //     Tree::Empty => {
-            //         tracing::info!("Tree is empty : {}", hex::encode(tx_hash.as_slice()));
-            //     }
-            // }
+            _ => tracing::debug!("No internal message: {hex_hash}"),
         }
 
         Ok(())
@@ -207,29 +181,31 @@ impl TxTreeProducer {
 
 pub async fn reassemble_skipped_transactions(storage: Arc<TransactionStorage>) -> Result<()> {
     loop {
-        let trees = storage.try_reassemble_pending_trees()?;
+        let trees = storage.try_reassemble_pending_trees().await?;
         for tree in trees.iter() {
             match tree {
                 Tree::Full(transaction) => {
-                    if transaction.root_children().len() > 0 {
-                        tracing::warn!(
-                            "Loop triggered. Assembled full tree {:?}. Children len : {}",
-                            hex::encode(transaction.init_transaction_hash().as_slice()),
-                            transaction.root_children().len()
-                        );
+                    tracing::debug!(
+                        "Assembled full tree {:?}. Children len : {}",
+                        hex::encode(transaction.hash().as_slice()),
+                        transaction.children().len()
+                    );
 
-                        let st = storage.clone();
-                        let tx = transaction.clone();
-                        tokio::spawn(async move {
-                            st.clean_transaction_tree(&tx);
-                        });
+                    if transaction.children().len() > 0 {
+                        visualize_tree(transaction);
                     }
+
+                    let st = storage.clone();
+                    let tx = transaction.clone();
+                    tokio::spawn(async move {
+                        st.clean_transaction_tree(&tx);
+                    });
                 }
                 Tree::Partial(transaction) => {
                     tracing::warn!(
                         "Loop triggered. Assembled partial tree {:?}. Children len : {}",
-                        hex::encode(transaction.init_transaction_hash().as_slice()),
-                        transaction.root_children().len()
+                        hex::encode(transaction.hash().as_slice()),
+                        transaction.children().len()
                     );
                 }
                 Tree::Empty => {
@@ -237,6 +213,25 @@ pub async fn reassemble_skipped_transactions(storage: Arc<TransactionStorage>) -
                 }
             }
         }
-        tokio::time::sleep(Duration::from_secs(5)).await;
+        tokio::time::sleep(Duration::from_secs(10)).await;
+    }
+}
+
+pub fn visualize_tree(tree: &TransactionNode) {
+    tracing::info!("------------------------------------------------------");
+    tracing::info!("ROOT IS: {}", hex::encode(tree.hash().as_slice()));
+    for n in tree.children() {
+        visualize_ancestor(tree.hash(), n);
+    }
+}
+
+fn visualize_ancestor(parent_hash: &UInt256, node: &TransactionNode) {
+    tracing::info!(
+        "Child: {}. Parent: {}",
+        hex::encode(node.hash().as_slice()),
+        hex::encode(parent_hash.as_slice())
+    );
+    for c in node.children() {
+        visualize_ancestor(node.hash(), c);
     }
 }
