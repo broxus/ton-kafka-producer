@@ -55,6 +55,10 @@ impl TransactionNode {
     }
 
     pub fn append_child(&mut self, tx: TransactionNode) -> () {
+        if let Some(_) = self.children.iter().find(|x| x.tx_hash == tx.hash()) {
+            tracing::error!("Trying to add existing child: {:x}", tx.hash());
+            return ();
+        }
         self.children.push(tx);
     }
 }

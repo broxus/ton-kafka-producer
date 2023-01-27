@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use ton_block::Serializable;
 use ton_types::UInt256;
 
 use crate::models::Tree;
@@ -122,8 +121,6 @@ impl TransactionStorage {
         boc: &[u8],
         out_msgs: Vec<UInt256>,
     ) -> Result<()> {
-        let start = broxus_util::now_ms_u64();
-
         let mut batch = rocksdb::WriteBatch::default();
 
         let int_in_msg_cf = self.get_internal_in_message_cf();
@@ -134,13 +131,6 @@ impl TransactionStorage {
         let processed_cf = self.get_tx_processed_cf();
 
         let tx_key = get_key_bytes(tx_lt, tx_hash);
-        // if previous_tx_lt == 0 {
-        //     tracing::error!(
-        //         "Saving transaction with empty parent. Hash: {}",
-        //         hex::encode(tx_hash.as_slice())
-        //     );
-        //     //tracing::warn!("Saving transaction. Hash: {}", hex::encode(tx_hash.as_slice()))
-        // }
 
         let tx_key = tx_key.as_slice();
 
@@ -150,37 +140,40 @@ impl TransactionStorage {
                 self.save_message_connection_external(&tx_key, out_msgs.as_slice(), &mut batch);
                 1
             }
-            (None, Some(int)) => match self.get_parent_transaction_by(int)? {
-                Some(parent) => {
-                    let parent_depth = self.get_depth(parent.db_key().as_slice())?;
-                    match parent_depth {
-                        Some(depth) => {
-                            batch.put_cf(&int_in_msg_cf, tx_key, int.as_slice());
-                            self.save_message_connection(
-                                &tx_key,
-                                &int,
-                                out_msgs.as_slice(),
-                                &mut batch,
-                            );
-                            depth + 1
-                        }
-                        None => {
-                            return Err(StorageError::TransactionDepthMissing(hex::encode(
-                                parent.hash().as_slice(),
-                            )));
+            (None, Some(int)) => {
+                self.save_message_connection(&tx_key, &int, out_msgs.as_slice(), &mut batch);
+                match self.get_parent_transaction_by(int)? {
+                    Some(parent) => {
+                        self.save_message_connection(
+                            &tx_key,
+                            &int,
+                            out_msgs.as_slice(),
+                            &mut batch,
+                        );
+                        let parent_depth = self.get_depth(parent.db_key().as_slice())?;
+                        match parent_depth {
+                            Some(depth) => {
+                                batch.put_cf(&int_in_msg_cf, tx_key, int.as_slice());
+                                depth + 1
+                            }
+                            None => {
+                                return Err(StorageError::TransactionDepthMissing(hex::encode(
+                                    parent.hash().as_slice(),
+                                )));
+                            }
                         }
                     }
+                    None if !self.applied_rules.search_for_parent => {
+                        self.db.put_cf(&int_in_msg_cf, tx_key, int.as_slice())?;
+                        1
+                    }
+                    _ => {
+                        return Err(StorageError::ParentTransactionMissing(hex::encode(
+                            int.as_slice(),
+                        )));
+                    }
                 }
-                None if !self.applied_rules.search_for_parent => {
-                    self.db.put_cf(&int_in_msg_cf, tx_key, int.as_slice())?;
-                    1
-                }
-                _ => {
-                    return Err(StorageError::ParentTransactionMissing(hex::encode(
-                        int.as_slice(),
-                    )));
-                }
-            },
+            }
             _ => return Err(StorageError::BadTransaction),
         };
 
@@ -194,38 +187,16 @@ impl TransactionStorage {
         batch.put_cf(&out_msgs_cf, tx_key, msgs.as_slice());
         batch.put_cf(&processed_cf, tx_key, &[0]); //false
 
-        self.db.write(batch)?;
+        if let Err(e) = self.db.write(batch) {
+            tracing::error!("Failed to add transaction: {:?}", e);
+        }
 
         Ok(())
     }
 
     fn mark_transaction_processed(&self, key: &[u8], wb: &mut WriteBatch) -> () {
-        let (_, hash) = get_key_data_from_bytes(key);
-        //tracing::info!("Marking transaction as processed: {:x}", hash);
         let processed_cf = self.get_tx_processed_cf();
         wb.put_cf(&processed_cf, key, &[1]);
-    }
-
-    fn mark_transaction_not_processed(&self, key: &[u8]) -> Result<()> {
-        let processed_cf = self.get_tx_processed_cf();
-        self.db.put_cf(&processed_cf, key, &[0])?;
-        Ok(())
-    }
-
-    // fn mark_tree_as_processed(&self, transaction: &TransactionNode) -> Result<()> {
-    //     self.mark_transaction_processed(transaction.db_key().as_slice())?;
-    //     for t in transaction.children().iter() {
-    //         self.mark_tree_as_processed(t)?
-    //     }
-    //     Ok(())
-    // }
-
-    fn rollback_tree(&self, transaction: &TransactionNode) -> Result<()> {
-        self.mark_transaction_not_processed(transaction.db_key().as_slice())?;
-        for t in transaction.children().iter() {
-            self.rollback_tree(t)?
-        }
-        Ok(())
     }
 
     fn mark_transaction_tree_map_as_processed(
@@ -244,11 +215,6 @@ impl TransactionStorage {
     }
 
     pub fn clean_transaction_tree(&self, transaction: &TransactionNode) -> Result<()> {
-        // tracing::info!(
-        //     "Cleaning transaction tree: {}",
-        //     hex::encode(transaction.tx_hash.inner())
-        // );
-
         let int_in_msg_cf = self.get_internal_in_message_cf();
         let ext_in_msg_cf = self.get_external_in_message_cf();
         let boc_cf = self.get_tx_boc_cf();
@@ -332,6 +298,7 @@ impl TransactionStorage {
                 }
             }
 
+            //pick only final messages
             let out_messages = self.get_tx_out_messages(pending_transaction.as_slice())?;
 
             if !out_messages.is_empty() {
@@ -378,7 +345,7 @@ impl TransactionStorage {
         //processed_transactions: &mut HashMap<UInt256, bool>,
     ) -> Result<Tree> {
         let mut root: Option<TransactionNode> = None;
-        //let mut inititial_tx: Option<TransactionNode> = None;
+        //let mut initial_node = true;
 
         loop {
             //let mut temp = root.clone();
@@ -400,22 +367,6 @@ impl TransactionStorage {
             }
 
             let mut current_root = root.clone().unwrap(); // always Some(_) because we check it on previous step
-
-            //append children tx to current node
-            tracing::info!("Finding ancestors for root: {:x}", current_root.hash());
-            let key = get_key_bytes(current_root.lt(), &current_root.hash());
-            let out_msgs = self.get_tx_out_messages(key.as_slice())?;
-            tracing::info!(
-                "Found {} ancestors for root {:x}",
-                out_msgs.len(),
-                current_root.hash()
-            );
-
-            'out_mes: for i in &out_msgs {
-                if let Err(e) = self.append_children_transaction_tree(&i, &mut current_root) {
-                    tracing::error!("Failed to append child to parent. Err: {e:?}");
-                }
-            }
 
             //find parent
             let internal_message_opt =
@@ -531,46 +482,55 @@ impl TransactionStorage {
         msg_hash: &UInt256,
         parent_node: &mut TransactionNode,
     ) -> Result<()> {
-        let node_opt = self.get_child_transaction_by(parent_node.lt(), msg_hash)?;
+        let node_opt = self.get_child_transaction_by(msg_hash)?;
 
         if let Some(mut node) = node_opt {
             let key = get_key_bytes(node.lt(), &node.hash());
             let children_out_messages = self.get_tx_out_messages(key.as_slice())?;
 
-            if !children_out_messages.is_empty() {
-                for i in children_out_messages.iter() {
-                    let tree_node_opt = self.get_child_transaction_by(node.lt(), i)?;
+            for i in children_out_messages.iter() {
+                let tree_node_opt = self.get_child_transaction_by(i)?;
 
-                    if let Some(tree_node_opt) = tree_node_opt {
-                        tracing::info!(
-                            "Appending child {} to node {}",
-                            hex::encode(tree_node_opt.hash().inner()),
-                            hex::encode(parent_node.hash().inner())
-                        );
-                        node.append_child(tree_node_opt);
-                    }
+                if let Some(tree_node) = tree_node_opt {
+                    tracing::info!(
+                        "Appending child {} to node {}",
+                        hex::encode(tree_node.hash().inner()),
+                        hex::encode(parent_node.hash().inner())
+                    );
+                    node.append_child(tree_node);
                 }
             }
 
-            for (node, message) in node
-                .children_mut()
-                .iter_mut()
-                .zip(children_out_messages.iter())
-            {
-                self.append_children_transaction_tree(message, node)?;
+            let temp_node = node.clone();
+
+            for n in node.children_mut() {
+                tracing::info!(
+                    "Trying to process child {:x} for parent {:x}",
+                    n.hash(),
+                    temp_node.hash(),
+                );
+                let children_out_messages = self.get_tx_out_messages(n.db_key().as_slice())?;
+                tracing::info!(
+                    "Node {:x} has {} children",
+                    n.hash(),
+                    children_out_messages.len(),
+                );
+
+                for mes in children_out_messages {
+                    self.append_children_transaction_tree(&mes, n)?;
+                }
             }
 
+            tracing::info!("Appended {:x} to {:x}", node.hash(), parent_node.hash());
             parent_node.append_child(node);
+        } else {
+            tracing::error!("Failed to find ancestor info for {:x}", parent_node.hash())
         }
 
         Ok(())
     }
 
-    fn get_child_transaction_by(
-        &self,
-        lt: u64,
-        msg_hash: &UInt256,
-    ) -> Result<Option<TransactionNode>> {
+    fn get_child_transaction_by(&self, msg_hash: &UInt256) -> Result<Option<TransactionNode>> {
         let child_tx_cf = self.get_message_child_transaction_cf();
         let node = match self.db.get_cf(&child_tx_cf, msg_hash)? {
             Some(child_tx) => {
@@ -630,17 +590,17 @@ struct StorageRules {
 
 pub mod tests {
     use crate::transaction_storage::storage::{
-        TransactionStorage, MSG_PARENT_TX, TX_EXT_IN_MSG, TX_INT_IN_MSG, TX_INT_OUT_MSGS,
-        TX_PROCESSED,
+        TransactionStorage, MSG_CHILD_TX, MSG_PARENT_TX, TX_EXT_IN_MSG, TX_INT_IN_MSG,
+        TX_INT_OUT_MSGS, TX_PROCESSED,
     };
     use crate::utils::storage_utils::{get_key_bytes, get_key_data_from_bytes};
-    use rocksdb::{Options, DB};
+    use rocksdb::{IteratorMode, Options, DB};
     use std::path::Path;
     use std::str::FromStr;
-    use ton_types::UInt256;
 
     #[test]
     pub fn key_bytes() {
+        use ton_types::UInt256;
         let (lt, hash) = (
             13259412000001,
             UInt256::from_str("fb8882413dd7d549231c0f94600ba5fa827bc56b8bd570e1d3137c43bcd876f9")
@@ -652,92 +612,79 @@ pub mod tests {
         assert_eq!(new_lt, lt);
         assert_eq!(new_hash, hash);
     }
-    #[tokio::test]
-    pub async fn test() {
-        let path = Path::new("./test_db");
-        let transaction_storage =
-            TransactionStorage::new(path, 10, false).expect("Failed transaction storage");
-        let transaction_hash_1 = UInt256::from_slice(
-            hex::decode("54f47f19522023404e66999ebfdd029212efb917114579f4687afc40b3adb119")
-                .expect("00")
-                .as_slice(),
-        );
-        let incoming_message_1 = UInt256::from_slice(
-            hex::decode("3d60c92fba3fa3440abd7e2f2ebcf4cd8d9c98c2567cdd0c03b2cadc857e11e4")
-                .expect("01")
-                .as_slice(),
-        );
 
-        let outcoming_message_1 = UInt256::from_slice(
-            hex::decode("3d60c92fba3fa3440abd7e2f2ebcf4cd8d9c98c2567cdd0c03b2cadc857e11e3")
-                .expect("001")
-                .as_slice(),
-        );
+    #[test]
+    pub fn get_all_child_data() {
+        let path = Path::new("./db");
 
-        let outcoming_message_2 = UInt256::from_slice(
-            hex::decode("3d60c92fba3fa3440abd7e2f2ebcf4cd8d9c98c2567cdd0c03b2cadc857e11ea")
-                .expect("002")
-                .as_slice(),
-        );
+        let mut db_opts = Options::default();
 
-        // transaction_storage
-        //     .add_transaction(
-        //         &transaction_hash_1,
-        //         Some(&incoming_message_1),
-        //         None,
-        //         &[0, 1, 1, 1],
-        //         &[outcoming_message_1, outcoming_message_2],
-        //     )
-        //     .expect("3");
+        db_opts.set_log_level(rocksdb::LogLevel::Error);
+        db_opts.set_keep_log_file_num(2);
+        db_opts.set_recycle_log_file_num(2);
 
-        let transaction_hash_2 = UInt256::from_slice(
-            hex::decode("54f47f19522023404e66999ebfdd029212efb917114579f4687afc40b3adb110")
-                .expect("0")
-                .as_slice(),
-        );
-        let incoming_message_2 = UInt256::from_slice(
-            hex::decode("3d60c92fba3fa3440abd7e2f2ebcf4cd8d9c98c2567cdd0c03b2cadc857e11e3")
-                .expect("1")
-                .as_slice(),
-        );
+        db_opts.create_missing_column_families(true);
+        db_opts.create_if_missing(true);
 
-        // transaction_storage
-        //     .add_transaction(
-        //         &transaction_hash_2,
-        //         None,
-        //         Some(&incoming_message_2),
-        //         &[0, 1, 1, 1],
-        //         &[],
-        //     )
-        //     .expect("4");
+        let columns = TransactionStorage::init_columns();
 
-        let transaction_hash_3 = UInt256::from_slice(
-            hex::decode("54f47f19522023404e66999ebfdd029212efb917114579f4687afc40b3adb1bc")
-                .expect("0")
-                .as_slice(),
-        );
-        let incoming_message_3 = UInt256::from_slice(
-            hex::decode("3d60c92fba3fa3440abd7e2f2ebcf4cd8d9c98c2567cdd0c03b2cadc857e11ea")
-                .expect("1")
-                .as_slice(),
-        );
+        let db = DB::open_cf_descriptors(&db_opts, path, columns).expect("descr");
 
-        // transaction_storage
-        //     .add_transaction(
-        //         &transaction_hash_3,
-        //         None,
-        //         Some(&incoming_message_3),
-        //         &[0, 1, 1, 1],
-        //         &[],
-        //     )
-        //     .expect("4");
+        let tx_child = db.cf_handle(MSG_CHILD_TX).expect("CHILD");
+        let mut tx_child_cf = db.iterator_cf(&tx_child, IteratorMode::Start);
 
-        // let x = transaction_storage
-        //     .try_assemble_tree(&transaction_hash_2)
-        //     .expect("2");
-        // if let Some(x) = x {
-        //     println!("{:?}", x);
-        // }
+        for i in tx_child_cf {
+            match i {
+                Ok((key, value)) => {
+                    let (lt, hash) = get_key_data_from_bytes(value.as_ref());
+                    println!(
+                        "msg: {} -> transation {:x}",
+                        hex::encode(key.as_ref()),
+                        hash
+                    )
+                }
+                Err(e) => {
+                    println!("ERROR: {:?}", e);
+                }
+            }
+        }
+    }
+
+    #[test]
+    pub fn get_all_parent_data() {
+        let path = Path::new("./db");
+
+        let mut db_opts = Options::default();
+
+        db_opts.set_log_level(rocksdb::LogLevel::Error);
+        db_opts.set_keep_log_file_num(2);
+        db_opts.set_recycle_log_file_num(2);
+
+        db_opts.create_missing_column_families(true);
+        db_opts.create_if_missing(true);
+
+        let columns = TransactionStorage::init_columns();
+
+        let db = DB::open_cf_descriptors(&db_opts, path, columns).expect("descr");
+
+        let tx_parent = db.cf_handle(MSG_PARENT_TX).expect("PARENT");
+        let mut tx_parent_cf = db.iterator_cf(&tx_parent, IteratorMode::Start);
+
+        for i in tx_parent_cf {
+            match i {
+                Ok((key, value)) => {
+                    let (lt, hash) = get_key_data_from_bytes(value.as_ref());
+                    println!(
+                        "msg: {} -> transation {:x}",
+                        hex::encode(key.as_ref()),
+                        hash
+                    )
+                }
+                Err(e) => {
+                    println!("ERROR: {:?}", e);
+                }
+            }
+        }
     }
 
     #[tokio::test]
@@ -745,8 +692,8 @@ pub mod tests {
         //let tx_hash = "2a236fc4708994e6317cc986b0ef3775d93c1cd5f21e1c514271c4081cf252be";
         //let lt = 13315145000001u64;
 
-        let tx_hash = "b618d7c26b41e83cab6246ef03e28efb27018adbd41591712c11fec0ca606839";
-        let lt = 13411941000006u64;
+        let tx_hash = "f38a45df6e2ebcd7b35984c83e8d97450e25d7be4db3a4ce1686674cc1a519ee";
+        let lt = 13516538000003u64;
 
         let transaction = hex::decode(tx_hash).expect("decode");
         let key = get_key_bytes(lt, &UInt256::from_slice(transaction.as_slice()));
@@ -791,13 +738,25 @@ pub mod tests {
 
         let tx_int_out_msg = db.cf_handle(TX_INT_OUT_MSGS).expect("TX_INT_OUT_MSGS");
         let int_out_msgs_opt = db.get_cf(&tx_int_out_msg, key.as_slice()).expect("column");
+        let tx_child = db.cf_handle(MSG_CHILD_TX).expect("CHILD");
+
         match int_out_msgs_opt {
             Some(msgs) => {
                 let mut messages: Vec<UInt256> = Vec::new();
 
                 for ms in msgs.chunks(32) {
                     println!("Int out msg: {}", hex::encode(ms));
-                    //messages.push(UInt256::from_slice(ms));
+
+                    let tx_next_opt = db.get_cf(&tx_child, ms).expect("column");
+                    match tx_next_opt {
+                        Some(next) => {
+                            let (lt, hash) = get_key_data_from_bytes(next.as_slice());
+                            println!("Next tx lt: {}, hash: {}", lt, hex::encode(hash.as_slice()));
+                        }
+                        None => {
+                            println!("Next tx is empty");
+                        }
+                    }
                 }
             }
             None => {

@@ -198,7 +198,9 @@ pub async fn reassemble_skipped_transactions(storage: Arc<TransactionStorage>) -
                     let st = storage.clone();
                     let tx = transaction.clone();
                     tokio::spawn(async move {
-                        st.clean_transaction_tree(&tx);
+                        if let Err(e) = st.clean_transaction_tree(&tx) {
+                            tracing::error!("Failed to clean transaction tree. Err: {e}")
+                        }
                     });
                 }
                 Tree::Partial(transaction) => {

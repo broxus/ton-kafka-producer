@@ -71,13 +71,9 @@ impl BlocksHandler {
                     .await
             }
             Self::TxTree(producer) => {
-                let start = broxus_util::now_ms_u64();
                 producer
                     .handle_block(block_stuff.id(), block_stuff.block(), max_transaction_depth)
-                    .await;
-                let end = broxus_util::now_ms_u64();
-                //tracing::warn!("Handle block time: {} ms", end - start);
-                Ok(())
+                    .await
             }
             Self::None => Ok(()),
         }
