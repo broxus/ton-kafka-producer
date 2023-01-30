@@ -20,7 +20,7 @@ impl ArchivesScanner {
         let list = std::fs::read_to_string(list_path)?;
 
         Ok(Self {
-            handler: Arc::new(BlocksHandler::new(Some(kafka_settings), None, None)?),
+            handler: Arc::new(BlocksHandler::new(Some(kafka_settings), None)?),
             list,
         })
     }

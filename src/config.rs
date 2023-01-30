@@ -27,9 +27,9 @@ pub struct AppConfig {
     #[serde(default)]
     pub kafka_settings: Option<KafkaConfig>,
 
-    /// Max transaction depth to store in transaction storage for TxTree producer
+    /// Options for TxTree producer
     #[serde(default)]
-    pub max_transaction_depth: Option<u32>,
+    pub tx_tree_settings: Option<TxTreeSettings>,
 
     /// log4rs settings.
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
@@ -267,6 +267,19 @@ pub struct KafkaProducerConfig {
     pub batch_flush_threshold_size: usize,
     #[serde(default = "default_batch_flush_threshold_ms")]
     pub batch_flush_threshold_ms: u64,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TxTreeSettings {
+    pub max_transaction_depth: Option<u32>,
+    #[serde(default)]
+    pub ignored_senders: Vec<String>,
+    #[serde(default)]
+    pub ignored_receivers: Vec<String>,
+
+    pub db_path: String,
+    pub assemble_interval_secs: u64,
 }
 
 fn default_batch_flush_threshold_size() -> usize {

@@ -17,7 +17,6 @@ const TX_INT_OUT_MSGS: &str = "tx_internal_out_msgs";
 const TX_BOC: &str = "tx_boc";
 const TX_DEPTH: &str = "tx_depth";
 const TX_PROCESSED: &str = "tx_processed";
-//const TX_PREV: &str = "tx_previous_tx";
 
 const MSG_PARENT_TX: &str = "msg_parent_transaction";
 const MSG_CHILD_TX: &str = "msg_child_transaction";
@@ -251,11 +250,9 @@ impl TransactionStorage {
         Ok(())
     }
 
-    pub async fn try_reassemble_pending_trees(&self) -> Result<Vec<Tree>> {
+    pub fn try_reassemble_pending_trees(&self) -> Result<Vec<Tree>> {
         let mut trees = Vec::new();
 
-        //let sem = Arc::new(tokio::sync::Semaphore::new(10));
-        //let mut futures_ordered = FuturesOrdered::new();
         let column_cf = self.get_tx_processed_cf();
 
         let mut processed_map: HashMap<UInt256, bool> = HashMap::new();
@@ -280,11 +277,11 @@ impl TransactionStorage {
 
         for pending_transaction in pending_transaction.iter() {
             let (_, hash) = get_key_data_from_bytes(pending_transaction.as_slice());
-            tracing::info!("Transaction {:x} picked for processing", &hash);
+            tracing::trace!("Transaction {:x} picked for processing", &hash);
             let processed_opt = processed_map.get(&hash);
             match processed_opt {
                 Some(processed) => {
-                    tracing::info!("Transaction {:x} processed = {}", &hash, processed);
+                    tracing::trace!("Transaction {:x} processed = {}", &hash, processed);
                     if *processed {
                         continue;
                     }
@@ -339,25 +336,19 @@ impl TransactionStorage {
         Ok(trees)
     }
 
-    pub fn try_assemble_tree(
-        &self,
-        key: &[u8],
-        //processed_transactions: &mut HashMap<UInt256, bool>,
-    ) -> Result<Tree> {
+    pub fn try_assemble_tree(&self, key: &[u8]) -> Result<Tree> {
         let mut root: Option<TransactionNode> = None;
-        //let mut initial_node = true;
 
         loop {
-            //let mut temp = root.clone();
             let (lt, hash) = get_key_data_from_bytes(key);
 
             if root.is_none() {
-                tracing::info!("Assembling first root for hash {:x}", &hash);
+                tracing::trace!("Assembling first root for hash {:x}", &hash);
                 let node = self.get_plain_node(lt, &hash)?;
                 if node.is_none() {
                     tracing::error!(
-                        "Node is empty. Cant find transaction for tx_hash: {}",
-                        hex::encode(hash.inner())
+                        "Node is empty. Cant find transaction for tx_hash: {:x}",
+                        hash
                     );
                     return Ok(Tree::Empty);
                 }
@@ -374,15 +365,14 @@ impl TransactionStorage {
             let external_message_opt =
                 self.get_external_in_message(current_root.db_key().as_slice())?;
 
-            tracing::info!("Finding parent for root: {:x}", current_root.hash());
+            tracing::trace!("Finding parent for root: {:x}", current_root.hash());
 
             match (internal_message_opt, external_message_opt) {
                 (Some(message), None) => {
-                    ////let key = get_key_bytes(current_root.lt(), &current_root.hash());
                     let parent_opt = self.get_parent_transaction_by(&message)?;
                     match parent_opt {
                         Some(mut parent) => {
-                            tracing::info!(
+                            tracing::trace!(
                                 "Parent found for root: {:x}. It is: {:x}",
                                 current_root.hash(),
                                 parent.hash()
@@ -393,9 +383,9 @@ impl TransactionStorage {
                                     parent.append_child(current_root.clone());
                                     continue 'out_mes;
                                 }
-                                tracing::info!(
-                                    "Appending child to parent. Out message hash: {}",
-                                    hex::encode(i.inner())
+                                tracing::trace!(
+                                    "Appending child to parent. Out message hash: {:x}",
+                                    i
                                 );
                                 if let Err(e) =
                                     self.append_children_transaction_tree(&i, &mut parent)
@@ -406,13 +396,13 @@ impl TransactionStorage {
                             root = Some(parent.clone());
                         }
                         None => {
-                            tracing::info!("Parent not found for root: {:x}", current_root.hash());
+                            tracing::trace!("Parent not found for root: {:x}", current_root.hash());
                             return Ok(Tree::Partial(current_root));
                         }
                     }
                 }
                 (None, Some(_)) => {
-                    tracing::info!(
+                    tracing::trace!(
                         "Node {:x} has no parents. Top level node",
                         current_root.hash()
                     );
@@ -492,10 +482,10 @@ impl TransactionStorage {
                 let tree_node_opt = self.get_child_transaction_by(i)?;
 
                 if let Some(tree_node) = tree_node_opt {
-                    tracing::info!(
-                        "Appending child {} to node {}",
-                        hex::encode(tree_node.hash().inner()),
-                        hex::encode(parent_node.hash().inner())
+                    tracing::trace!(
+                        "Appending child {:x} to node {:x}",
+                        tree_node.hash(),
+                        parent_node.hash()
                     );
                     node.append_child(tree_node);
                 }
@@ -504,13 +494,13 @@ impl TransactionStorage {
             let temp_node = node.clone();
 
             for n in node.children_mut() {
-                tracing::info!(
+                tracing::trace!(
                     "Trying to process child {:x} for parent {:x}",
                     n.hash(),
                     temp_node.hash(),
                 );
                 let children_out_messages = self.get_tx_out_messages(n.db_key().as_slice())?;
-                tracing::info!(
+                tracing::trace!(
                     "Node {:x} has {} children",
                     n.hash(),
                     children_out_messages.len(),
@@ -521,7 +511,7 @@ impl TransactionStorage {
                 }
             }
 
-            tracing::info!("Appended {:x} to {:x}", node.hash(), parent_node.hash());
+            tracing::trace!("Appended {:x} to {:x}", node.hash(), parent_node.hash());
             parent_node.append_child(node);
         } else {
             tracing::error!("Failed to find ancestor info for {:x}", parent_node.hash())
@@ -597,10 +587,10 @@ pub mod tests {
     use rocksdb::{IteratorMode, Options, DB};
     use std::path::Path;
     use std::str::FromStr;
+    use ton_types::UInt256;
 
     #[test]
     pub fn key_bytes() {
-        use ton_types::UInt256;
         let (lt, hash) = (
             13259412000001,
             UInt256::from_str("fb8882413dd7d549231c0f94600ba5fa827bc56b8bd570e1d3137c43bcd876f9")
@@ -763,9 +753,6 @@ pub mod tests {
                 println!("Internal out messages are empty");
             }
         }
-
-        //db.cf_handle(TX_BOC).expect("TX_BOC"),
-        //db.cf_handle(TX_DEPTH).expect("TX_DEPTH"),
 
         let tx_parent = db.cf_handle(MSG_PARENT_TX).expect("PARENT");
         let tx_prev_opt = db.get_cf(&tx_parent, in_msg.as_slice()).expect("column");

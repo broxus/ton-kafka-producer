@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -21,7 +20,7 @@ pub struct NetworkScanner {
 impl NetworkScanner {
     pub async fn new(
         kafka_settings: Option<KafkaConfig>,
-        max_transaction_depth: Option<u32>,
+        tx_tree_producer_settings: Option<TxTreeSettings>,
         node_settings: NodeConfig,
         global_config: ton_indexer::GlobalConfig,
         jrpc_state: Arc<JrpcState>,
@@ -31,12 +30,8 @@ impl NetworkScanner {
             _ => None,
         };
 
-        let subscriber: Arc<dyn ton_indexer::Subscriber> = BlocksSubscriber::new(
-            kafka_settings,
-            jrpc_state,
-            Some(&node_settings.db_path),
-            max_transaction_depth,
-        )?;
+        let subscriber: Arc<dyn ton_indexer::Subscriber> =
+            BlocksSubscriber::new(kafka_settings, jrpc_state, tx_tree_producer_settings)?;
 
         let indexer = ton_indexer::Engine::new(
             node_settings
@@ -81,23 +76,20 @@ struct BlocksSubscriber {
     handler: BlocksHandler,
     jrpc_state: Arc<JrpcState>,
     extract_all: bool,
-    max_transaction_depth: u32,
 }
 
 impl BlocksSubscriber {
     fn new(
         config: Option<KafkaConfig>,
         jrpc_state: Arc<JrpcState>,
-        rocksdb_path: Option<&Path>,
-        max_transaction_depth: Option<u32>,
+        tx_tree_settings: Option<TxTreeSettings>,
     ) -> Result<Arc<Self>> {
         let extract_all = matches!(&config, Some(KafkaConfig::Gql(_)));
 
         Ok(Arc::new(Self {
-            handler: BlocksHandler::new(config, rocksdb_path, max_transaction_depth)?,
+            handler: BlocksHandler::new(config, tx_tree_settings)?,
             jrpc_state,
             extract_all,
-            max_transaction_depth: max_transaction_depth.unwrap_or(100),
         }))
     }
 }
@@ -117,14 +109,7 @@ impl BlocksSubscriber {
         }
 
         self.handler
-            .handle_block(
-                block_stuff,
-                block_data,
-                block_proof,
-                shard_state,
-                true,
-                self.max_transaction_depth,
-            )
+            .handle_block(block_stuff, block_data, block_proof, shard_state, true, 0)
             .await
             .context("Failed to handle block")
     }

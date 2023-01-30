@@ -7,7 +7,7 @@ pub enum Tree {
     Empty,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TransactionNode {
     tx_hash: UInt256,
     tx_lt: u64,

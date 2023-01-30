@@ -1,7 +1,6 @@
 use crate::blocks_handler::tx_tree_producer::TxTreeProducer;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use bytes::Bytes;
-use std::path::Path;
 use ton_indexer::utils::*;
 
 use self::broxus_producer::*;
@@ -18,25 +17,25 @@ pub enum BlocksHandler {
     Broxus(BroxusProducer),
     Gql(GqlProducer),
     TxTree(TxTreeProducer),
-
     None,
 }
 
 impl BlocksHandler {
     pub fn new(
         config: Option<KafkaConfig>,
-        rocksdb_path: Option<&Path>,
-        max_transaction_depth: Option<u32>,
+        tx_tree_settings: Option<TxTreeSettings>,
     ) -> Result<Self> {
         match config {
             Some(KafkaConfig::Broxus(config)) => BroxusProducer::new(config).map(Self::Broxus),
             Some(KafkaConfig::Gql(config)) => GqlProducer::new(config).map(Self::Gql),
-            Some(KafkaConfig::TxTree(config)) => match (rocksdb_path, max_transaction_depth) {
-                (Some(path), Some(depth)) => {
-                    TxTreeProducer::new(config.raw_transaction_producer, path, depth)
-                        .map(Self::TxTree)
+            Some(KafkaConfig::TxTree(config)) => match tx_tree_settings {
+                Some(settings) => {
+                    TxTreeProducer::new(config.raw_transaction_producer, settings).map(Self::TxTree)
                 }
-                _ => Err(anyhow!("DB path or transaction depth is not specified")),
+                _ => {
+                    tracing::error!("Tx Tree producer setting are not specified");
+                    Ok(Self::None)
+                }
             },
             None => Ok(Self::None),
         }

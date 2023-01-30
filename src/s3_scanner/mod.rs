@@ -22,7 +22,7 @@ impl S3Scanner {
             .context("Failed to create S3 archive downloader")?;
 
         Ok(Self {
-            handler: Arc::new(BlocksHandler::new(Some(kafka_settings), None, None)?),
+            handler: Arc::new(BlocksHandler::new(Some(kafka_settings), None)?),
             downloader,
             retry_on_error: config.retry_on_error,
         })
