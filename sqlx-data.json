@@ -1,0 +1,53 @@
+{
+  "db": "MySQL",
+  "849baf81518f7dbdfaecb91554bfa5c6f479b404753df6d1884cac67e2c2746e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "data",
+          "ordinal": 0,
+          "type_info": {
+            "char_set": 63,
+            "flags": {
+              "bits": 4225
+            },
+            "max_size": 16777215,
+            "type": "MediumBlob"
+          }
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT data\n         FROM raw_transactions\n         ORDER BY wc, account_id, lt"
+  },
+  "f9cfb7ad905784a9c7debea042b292513ac0670b6a9146bb4921e3829b9234b5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "count",
+          "ordinal": 0,
+          "type_info": {
+            "char_set": 63,
+            "flags": {
+              "bits": 129
+            },
+            "max_size": 21,
+            "type": "LongLong"
+          }
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT COUNT(*) as count FROM raw_transactions"
+  }
+}
