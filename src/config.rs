@@ -2,6 +2,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use broxus_util::serde_string_array;
 use everscale_network::{adnl, dht, overlay, rldp};
 use rand::Rng;
 use serde::Deserialize;
@@ -58,15 +59,6 @@ impl Default for ScanType {
             node_config: Default::default(),
         }
     }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct TreeProducerFilters {
-    pub max_transaction_width: Option<u32>,
-    pub max_transaction_depth: Option<u32>,
-    pub ignored_senders: Vec<String>,
-    pub ignored_recipients: Vec<String>,
 }
 
 /// TON node settings
@@ -270,14 +262,13 @@ pub struct KafkaProducerConfig {
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(default, deny_unknown_fields)]
 pub struct TxTreeSettings {
     pub max_transaction_depth: Option<u32>,
-    #[serde(default)]
+    #[serde(default, with = "serde_string_array")]
     pub ignored_senders: Vec<String>,
-    #[serde(default)]
+    #[serde(default, with = "serde_string_array")]
     pub ignored_receivers: Vec<String>,
-
     pub db_path: String,
     pub assemble_interval_secs: u64,
 }

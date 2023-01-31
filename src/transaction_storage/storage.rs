@@ -22,7 +22,6 @@ const MSG_PARENT_TX: &str = "msg_parent_transaction";
 const MSG_CHILD_TX: &str = "msg_child_transaction";
 
 pub struct TransactionStorage {
-    file_db_path: PathBuf,
     db: Arc<DB>,
     applied_rules: StorageRules,
 }
@@ -83,7 +82,6 @@ impl TransactionStorage {
         };
 
         Ok(Arc::new(Self {
-            file_db_path: file_db_path.to_path_buf(),
             db: Arc::new(db),
             applied_rules,
         }))
@@ -193,7 +191,7 @@ impl TransactionStorage {
         Ok(())
     }
 
-    fn mark_transaction_processed(&self, key: &[u8], wb: &mut WriteBatch) -> () {
+    fn mark_transaction_processed(&self, key: &[u8], wb: &mut WriteBatch) {
         let processed_cf = self.get_tx_processed_cf();
         wb.put_cf(&processed_cf, key, &[1]);
     }
@@ -202,8 +200,8 @@ impl TransactionStorage {
         &self,
         transaction: &TransactionNode,
         tree_map: &mut HashMap<UInt256, bool>,
-    ) -> () {
-        let mut processed_opt = tree_map.get_mut(transaction.hash());
+    ) {
+        let processed_opt = tree_map.get_mut(transaction.hash());
         if let Some(processed) = processed_opt {
             *processed = true;
         }
@@ -357,7 +355,7 @@ impl TransactionStorage {
                 continue;
             }
 
-            let mut current_root = root.clone().unwrap(); // always Some(_) because we check it on previous step
+            let current_root = root.clone().unwrap(); // always Some(_) because we check it on previous step
 
             //find parent
             let internal_message_opt =
@@ -379,7 +377,7 @@ impl TransactionStorage {
                             );
                             let out_msgs = self.get_tx_out_messages(parent.db_key().as_slice())?;
                             'out_mes: for i in &out_msgs {
-                                if i == &message {
+                                if i == message {
                                     parent.append_child(current_root.clone());
                                     continue 'out_mes;
                                 }
@@ -431,7 +429,7 @@ impl TransactionStorage {
         in_msg: &UInt256,
         out_msgs: &[UInt256],
         wb: &mut WriteBatch,
-    ) -> () {
+    ) {
         let parent_cf = self.get_message_parent_transaction_cf();
         let child_cf = self.get_message_child_transaction_cf();
 
@@ -447,7 +445,7 @@ impl TransactionStorage {
         tx: &[u8],
         out_msgs: &[UInt256],
         wb: &mut WriteBatch,
-    ) -> () {
+    ) {
         let parent_cf = self.get_message_parent_transaction_cf();
 
         for m in out_msgs {
@@ -538,7 +536,7 @@ impl TransactionStorage {
         Ok(self
             .db
             .get_cf(&boc, key.as_slice())?
-            .map(|b| TransactionNode::new(tx_hash.clone(), lt, b, Vec::new())))
+            .map(|b| TransactionNode::new(*tx_hash, lt, b, Vec::new())))
     }
 
     fn get_internal_in_message(&self, key: &[u8]) -> Result<Option<UInt256>> {
@@ -677,8 +675,8 @@ pub mod tests {
         }
     }
 
-    #[tokio::test]
-    pub async fn get_transaction_data() {
+    #[test]
+    pub fn get_transaction_data() {
         //let tx_hash = "2a236fc4708994e6317cc986b0ef3775d93c1cd5f21e1c514271c4081cf252be";
         //let lt = 13315145000001u64;
 

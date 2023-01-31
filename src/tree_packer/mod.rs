@@ -1,9 +1,10 @@
 use crate::models::TransactionNode;
 use anyhow::Result;
 
-use ton_block::{Deserializable, GetRepresentationHash, Serializable, Transaction};
+use ton_block::{Deserializable, GetRepresentationHash, Transaction};
 use ton_types::{serialize_toc, BuilderData, Cell, IBitstring, SliceData};
 
+#[derive(Default)]
 pub struct TreePacker {}
 
 impl TreePacker {
@@ -36,7 +37,7 @@ impl TreePacker {
                 let cell = sd.reference(i)?;
                 let rt = self.unpack_self_cell(cell)?;
                 root = Some(rt);
-                i = i + 1;
+                i += 1;
                 continue;
             }
 
@@ -54,7 +55,7 @@ impl TreePacker {
                     root.append_child(c);
                 }
             }
-            i = i + 1;
+            i += 1;
         }
 
         if let Some(root) = root {
@@ -94,7 +95,7 @@ impl TreePacker {
                 }
             }
 
-            i = i + 1;
+            i += 1;
         }
 
         Ok(children)
@@ -159,12 +160,6 @@ impl TreePacker {
 
         let cell = bd.into_cell()?;
         Ok(cell)
-    }
-}
-
-impl Default for TreePacker {
-    fn default() -> Self {
-        Self {}
     }
 }
 
