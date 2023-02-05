@@ -53,7 +53,6 @@ impl S3Scanner {
                             parsed.block_proof_stuff.as_ref(),
                             None,
                             false,
-                            100,
                         )
                         .await
                         .context("Failed to handle block")

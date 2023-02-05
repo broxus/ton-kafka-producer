@@ -111,7 +111,6 @@ async fn start_writing_blocks(
                 parsed.block_proof_stuff.as_ref(),
                 None,
                 false,
-                100,
             )
             .await
             .context("Failed to handle block")

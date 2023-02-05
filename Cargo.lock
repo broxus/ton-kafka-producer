@@ -301,6 +301,18 @@ version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb0a68b01e18f0e208233e2c444ccfcd0b5c4130592c65f0e54c48701a1dc5d2"
 dependencies = [
+ "errno",
+ "log",
+ "tikv-jemalloc-sys",
+ "tikv-jemallocator",
+]
+
+[[package]]
+name = "broxus-util"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4ce56c7c31f51329550e41d2642c09a4cd683fc889c26fe7147f9f42f463a2d"
+dependencies = [
  "base64 0.13.1",
  "config",
  "errno",
@@ -318,6 +330,7 @@ dependencies = [
  "tikv-jemalloc-sys",
  "tikv-jemallocator",
  "tokio",
+ "url",
 ]
 
 [[package]]
@@ -3339,7 +3352,7 @@ dependencies = [
  "arc-swap",
  "archive-uploader",
  "async-trait",
- "broxus-util",
+ "broxus-util 0.1.7",
  "bytes",
  "countme",
  "crc",
@@ -3384,7 +3397,7 @@ dependencies = [
  "atty",
  "base64 0.20.0",
  "bincode",
- "broxus-util",
+ "broxus-util 0.2.2",
  "bytes",
  "cargo-husky",
  "chrono",
@@ -3810,6 +3823,7 @@ dependencies = [
  "form_urlencoded",
  "idna 0.3.0",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]

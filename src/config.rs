@@ -197,7 +197,7 @@ pub struct StatesConfig {
 pub enum KafkaConfig {
     Broxus(BroxusKafkaConfig),
     Gql(GqlKafkaConfig),
-    TxTree(BroxusKafkaConfig),
+    TxTree(TxTreeProducerConfig),
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -207,11 +207,11 @@ pub struct BroxusKafkaConfig {
     pub raw_transaction_producer: KafkaProducerConfig,
 }
 
-// #[derive(Debug, Clone, Default, Deserialize)]
-// #[serde(default, deny_unknown_fields)]
-// pub struct TxTreeProducerConfig {
-//     pub raw_transaction_producer: KafkaProducerConfig,
-// }
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct TxTreeProducerConfig {
+    pub raw_transaction_producer: Option<KafkaProducerConfig>,
+}
 
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -261,16 +261,30 @@ pub struct KafkaProducerConfig {
     pub batch_flush_threshold_ms: u64,
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct TxTreeSettings {
     pub max_transaction_depth: Option<u32>,
+    pub max_transaction_width: Option<u32>,
     #[serde(default, with = "serde_string_array")]
     pub ignored_senders: Vec<String>,
     #[serde(default, with = "serde_string_array")]
     pub ignored_receivers: Vec<String>,
     pub db_path: String,
     pub assemble_interval_secs: u64,
+}
+
+impl Default for TxTreeSettings {
+    fn default() -> Self {
+        Self {
+            max_transaction_depth: Some(1000),
+            max_transaction_width: Some(1000),
+            ignored_senders: vec![],
+            ignored_receivers: vec![],
+            db_path: "../../db".to_string(),
+            assemble_interval_secs: 5,
+        }
+    }
 }
 
 fn default_batch_flush_threshold_size() -> usize {

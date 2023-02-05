@@ -109,7 +109,7 @@ impl BlocksSubscriber {
         }
 
         self.handler
-            .handle_block(block_stuff, block_data, block_proof, shard_state, true, 0)
+            .handle_block(block_stuff, block_data, block_proof, shard_state, true)
             .await
             .context("Failed to handle block")
     }

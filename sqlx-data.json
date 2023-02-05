@@ -1,6 +1,6 @@
 {
   "db": "MySQL",
-  "849baf81518f7dbdfaecb91554bfa5c6f479b404753df6d1884cac67e2c2746e": {
+  "13a3f5e064f1e6bee2411d10f190f11c143a056be304ebe6e7aad02ffb3ceb50": {
     "describe": {
       "columns": [
         {
@@ -23,7 +23,7 @@
         "Right": 0
       }
     },
-    "query": "SELECT data\n         FROM raw_transactions\n         ORDER BY wc, account_id, lt"
+    "query": "SELECT data\n         FROM raw_transactions\n         ORDER BY lt"
   },
   "f9cfb7ad905784a9c7debea042b292513ac0670b6a9146bb4921e3829b9234b5": {
     "describe": {

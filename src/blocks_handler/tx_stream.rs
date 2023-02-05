@@ -21,7 +21,7 @@ impl Db {
         let mut tx_stream = sqlx::query!(
             "SELECT data
          FROM raw_transactions
-         ORDER BY wc, account_id, lt"
+         ORDER BY lt"
         )
         .fetch(&self.pool)
         .map(|row| row.unwrap().data);
@@ -52,10 +52,11 @@ impl Db {
             writer.write_all(len.as_ref()).unwrap();
             writer.write_all(&tx).unwrap();
             ctr += 1;
-            if ctr % 1000 == 0 {
+            if ctr % 1000000 == 0 {
                 println!("Cached {ctr} of {tot} transactions");
             }
         }
+        println!("Finished caching {tot} transactions");
 
         Ok(())
     }
@@ -89,32 +90,43 @@ impl Db {
 
 #[cfg(test)]
 mod test {
-    use crate::utils::tx_stream::Db;
+    use super::Db;
+    use crate::blocks_handler::tx_tree_producer::TxTreeProducer;
+    use crate::config::TxTreeSettings;
+    use rdkafka::producer;
     use std::path::Path;
+    use ton_block::GetRepresentationHash;
 
     #[tokio::test]
-    async fn cache_tranactions() {
+    async fn cache_transactions() {
         let db = get_db().await;
-        db.cache_transactions(Path::new("transactions.cache"))
+        db.cache_transactions(Path::new("../../transactions.cache"))
             .await
             .unwrap();
     }
 
     async fn get_db() -> Db {
-        let db = super::Db::new("".to_string()).await;
+        let db = Db::new(
+            "mysql://ton:mZhrtfh5CvFTxqkG4Aqp8mwQd2S74XPF@10.20.0.180:3390/ton".to_string(),
+        )
+        .await;
         db
     }
 
     #[tokio::test]
     async fn read_cached() {
         let db = get_db().await;
+        let producer = TxTreeProducer::new(TxTreeSettings::default(), None).expect("producer");
         let mut rx = db
-            .read_cached(Path::new("transactions.cache"))
+            .read_cached(Path::new("../../transactions.cache"))
             .await
             .unwrap();
 
         while let Some(tx) = rx.recv().await {
-            println!("{:?}", tx);
+            if let Err(e) = producer.handle_transaction(&tx) {
+                let hash = tx.hash().unwrap_or_default();
+                println!("Failed to process transaction: {}. Err: {:?}", &hash, e)
+            }
         }
     }
 }

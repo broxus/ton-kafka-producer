@@ -163,7 +163,8 @@ impl TreePacker {
     }
 }
 
-pub mod tests {
+#[cfg(test)]
+mod tests {
     use crate::models::TransactionNode;
     use crate::tree_packer::TreePacker;
     use std::str::FromStr;
@@ -191,7 +192,7 @@ pub mod tests {
 
         let packer = TreePacker::default();
         let cell = packer.pack(&parent).expect("Failed to pack");
-        let bytes = ton_types::serialize_toc(&cell).expect("Failed to write bytes");
+        let _bytes = ton_types::serialize_toc(&cell).expect("Failed to write bytes");
         let node = packer.unpack(&cell).expect("Failed to unpack");
         assert_eq!(node, parent)
     }
