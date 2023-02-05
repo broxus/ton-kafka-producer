@@ -1,8 +1,9 @@
 use crate::models::TransactionNode;
 use rocksdb::{BoundColumnFamily, ColumnFamilyDescriptor, IteratorMode, Options, WriteBatch, DB};
+use schnellru::ByMemoryUsage;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use ton_types::UInt256;
 
 use crate::models::Tree;
@@ -23,6 +24,9 @@ const MSG_CHILD_TX: &str = "msg_child_transaction";
 pub struct TransactionStorage {
     db: Arc<DB>,
     applied_rules: StorageRules,
+    cache_node: Mutex<schnellru::LruMap<UInt256, TransactionNode, ByMemoryUsage>>,
+    cache_node_parent: Mutex<schnellru::LruMap<UInt256, TransactionNode, ByMemoryUsage>>,
+    cache_out: Mutex<schnellru::LruMap<Vec<u8>, Vec<UInt256>, ByMemoryUsage>>,
 }
 
 impl TransactionStorage {
@@ -83,6 +87,11 @@ impl TransactionStorage {
         Ok(Arc::new(Self {
             db: Arc::new(db),
             applied_rules,
+            cache_node: Mutex::new(schnellru::LruMap::with_memory_budget(1024 * 1024 * 1024)),
+            cache_node_parent: Mutex::new(schnellru::LruMap::with_memory_budget(
+                1024 * 1024 * 1024,
+            )),
+            cache_out: Mutex::new(schnellru::LruMap::with_memory_budget(1024 * 1024 * 1024)),
         }))
     }
 
@@ -471,12 +480,24 @@ impl TransactionStorage {
         }
     }
 
+    fn get_from_cache_parent(&self, msg_hash: &UInt256) -> Option<TransactionNode> {
+        let mut guard = self.cache_node_parent.lock().unwrap();
+        guard.get(msg_hash).cloned()
+    }
+
     fn get_parent_transaction_by(&self, out_msg_hash: &UInt256) -> Result<Option<TransactionNode>> {
         let parent_tx_cf = self.get_message_parent_transaction_cf();
         let node = match self.db.get_cf(&parent_tx_cf, out_msg_hash)? {
             Some(parent_tx) => {
                 let (lt, hash) = get_key_data_from_bytes(parent_tx.as_slice());
-                self.get_plain_node(lt, &hash)?
+                let node = self.get_plain_node(lt, &hash)?;
+                if let Some(ref node) = node {
+                    self.cache_node_parent
+                        .lock()
+                        .unwrap()
+                        .insert(out_msg_hash.clone(), node.clone());
+                }
+                node
             }
             None => None,
         };
@@ -536,12 +557,26 @@ impl TransactionStorage {
         Ok(())
     }
 
+    fn get_from_cache(&self, msg_hash: &UInt256) -> Option<TransactionNode> {
+        let mut guard = self.cache_node.lock().unwrap();
+        guard.get(msg_hash).cloned()
+    }
+
     fn get_child_transaction_by(&self, msg_hash: &UInt256) -> Result<Option<TransactionNode>> {
+        if let Some(node) = self.get_from_cache(msg_hash) {
+            return Ok(Some(node));
+        }
+
         let child_tx_cf = self.get_message_child_transaction_cf();
         let node = match self.db.get_cf(&child_tx_cf, msg_hash)? {
             Some(child_tx) => {
                 let (lt, hash) = get_key_data_from_bytes(child_tx.as_slice());
-                self.get_plain_node(lt, &hash)?
+                let node = self.get_plain_node(lt, &hash)?;
+                let mut guard = self.cache_node.lock().unwrap();
+                if let Some(ref node) = node {
+                    guard.insert(*msg_hash, node.clone());
+                }
+                node
             }
             None => None,
         };
@@ -575,7 +610,15 @@ impl TransactionStorage {
         Ok(message)
     }
 
+    fn get_from_cache_out_msgs(&self, key: &[u8]) -> Option<Vec<UInt256>> {
+        let mut guard = self.cache_out.lock().unwrap();
+        guard.get(key).cloned()
+    }
+
     fn get_tx_out_messages(&self, key: &[u8]) -> Result<Vec<UInt256>> {
+        if let Some(messages) = self.get_from_cache_out_msgs(key) {
+            return Ok(messages);
+        }
         let out_msg_cf = self.get_internal_out_messages_cf();
 
         let children_out_messages_raw = self.db.get_cf(&out_msg_cf, key)?.unwrap_or_default();
@@ -585,6 +628,9 @@ impl TransactionStorage {
         for ms in children_out_messages_raw.chunks(32) {
             messages.push(UInt256::from_slice(ms));
         }
+        let mut guard = self.cache_out.lock().unwrap();
+        guard.insert(key.to_vec(), messages.clone());
+
         Ok(messages)
     }
 }

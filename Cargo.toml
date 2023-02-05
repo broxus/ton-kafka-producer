@@ -58,6 +58,7 @@ tracing-subscriber = "0.3"
 tracing-appender = "0.2"
 
 sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "macros", "json", "chrono", "uuid", "offline", "mysql"] }
+schnellru = "0.2.1"
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }
