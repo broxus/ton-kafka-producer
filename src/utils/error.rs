@@ -12,6 +12,8 @@ pub enum StorageError {
     ParentTransactionMissing(String),
     #[error("Transaction does not contains ExtIn or IntIn message")]
     BadTransaction,
+    #[error("Data inconsistency")]
+    DataInconsistency,
     #[error("Generic rocksdb error occurred")]
     RocksDb(#[from] rocksdb::Error),
     #[error("Failed to deserialize object from binary representation")]

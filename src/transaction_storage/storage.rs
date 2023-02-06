@@ -1,10 +1,13 @@
 use crate::models::TransactionNode;
+use futures_util::stream::FuturesUnordered;
+use futures_util::stream::StreamExt;
+use parking_lot::Mutex;
 use rocksdb::{BoundColumnFamily, ColumnFamilyDescriptor, IteratorMode, Options, WriteBatch, DB};
 use schnellru::ByMemoryUsage;
-use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
-use ton_types::UInt256;
+use std::sync::Arc;
+use std::time::Duration;
+use ton_types::{FxDashMap, UInt256};
 
 use crate::models::Tree;
 use crate::utils::error::Result;
@@ -24,9 +27,10 @@ const MSG_CHILD_TX: &str = "msg_child_transaction";
 pub struct TransactionStorage {
     db: Arc<DB>,
     applied_rules: StorageRules,
-    cache_node: Mutex<schnellru::LruMap<UInt256, TransactionNode, ByMemoryUsage>>,
-    cache_node_parent: Mutex<schnellru::LruMap<UInt256, TransactionNode, ByMemoryUsage>>,
-    cache_out: Mutex<schnellru::LruMap<Vec<u8>, Vec<UInt256>, ByMemoryUsage>>,
+    child_transaction_cache: Mutex<schnellru::LruMap<UInt256, TransactionNode, ByMemoryUsage>>,
+    parent_transaction_cache: Mutex<schnellru::LruMap<UInt256, TransactionNode, ByMemoryUsage>>,
+    out_messages_cache: Mutex<schnellru::LruMap<Vec<u8>, Vec<UInt256>, ByMemoryUsage>>,
+    boc_cache: Mutex<schnellru::LruMap<Vec<u8>, Vec<u8>, ByMemoryUsage>>,
 }
 
 impl TransactionStorage {
@@ -87,11 +91,16 @@ impl TransactionStorage {
         Ok(Arc::new(Self {
             db: Arc::new(db),
             applied_rules,
-            cache_node: Mutex::new(schnellru::LruMap::with_memory_budget(1024 * 1024 * 1024)),
-            cache_node_parent: Mutex::new(schnellru::LruMap::with_memory_budget(
+            child_transaction_cache: Mutex::new(schnellru::LruMap::with_memory_budget(
                 1024 * 1024 * 1024,
             )),
-            cache_out: Mutex::new(schnellru::LruMap::with_memory_budget(1024 * 1024 * 1024)),
+            parent_transaction_cache: Mutex::new(schnellru::LruMap::with_memory_budget(
+                1024 * 1024 * 1024,
+            )),
+            out_messages_cache: Mutex::new(schnellru::LruMap::with_memory_budget(
+                1024 * 1024 * 1024,
+            )),
+            boc_cache: Mutex::new(schnellru::LruMap::with_memory_budget(1024 * 1024 * 1024)),
         }))
     }
 
@@ -162,14 +171,15 @@ impl TransactionStorage {
                             }
                         }
                     }
-                    None if !self.applied_rules.search_for_parent => {
-                        self.db.put_cf(&int_in_msg_cf, tx_key, int.as_slice())?;
-                        1
-                    }
-                    _ => {
-                        return Err(StorageError::ParentTransactionMissing(hex::encode(
-                            int.as_slice(),
-                        )));
+                    None => {
+                        if !self.applied_rules.search_for_parent {
+                            self.db.put_cf(&int_in_msg_cf, tx_key, int.as_slice())?;
+                            1
+                        } else {
+                            return Err(StorageError::ParentTransactionMissing(hex::encode(
+                                int.as_slice(),
+                            )));
+                        }
                     }
                 }
             }
@@ -201,12 +211,14 @@ impl TransactionStorage {
     fn mark_transaction_tree_map_as_processed(
         &self,
         transaction: &TransactionNode,
-        tree_map: &mut HashMap<Vec<u8>, bool>,
+        tree_map: &mut Arc<FxDashMap<Vec<u8>, bool>>,
     ) {
         let key = get_key_bytes(transaction.lt(), transaction.hash());
-        let processed_opt = tree_map.get_mut(key.as_slice());
-        if let Some(processed) = processed_opt {
-            *processed = true;
+        {
+            let processed_opt = tree_map.get_mut(key.as_slice());
+            if let Some(mut processed) = processed_opt {
+                *processed = true;
+            }
         }
 
         for i in transaction.children() {
@@ -214,115 +226,111 @@ impl TransactionStorage {
         }
     }
 
-    pub fn clean_transaction_tree(&self, transaction: &TransactionNode) -> Result<()> {
-        let int_in_msg_cf = self.get_internal_in_message_cf();
-        let ext_in_msg_cf = self.get_external_in_message_cf();
-        let boc_cf = self.get_tx_boc_cf();
-        let out_msgs_cf = self.get_internal_out_messages_cf();
-        let depth_cf = self.get_tx_depth_cf();
-        let processed_cf = self.get_tx_processed_cf();
+    pub async fn clean_transaction_trees(&self) -> Result<()> {
+        loop {
+            {
+                let columns = {
+                    let int_in_msg_cf = self.get_internal_in_message_cf();
+                    let ext_in_msg_cf = self.get_external_in_message_cf();
+                    let boc_cf = self.get_tx_boc_cf();
+                    let out_msgs_cf = self.get_internal_out_messages_cf();
+                    let depth_cf = self.get_tx_depth_cf();
+                    let processed_cf = self.get_tx_processed_cf();
 
-        let msg_parent_tx = self.get_message_parent_transaction_cf();
-        let msg_child_tx = self.get_message_child_transaction_cf();
+                    let msg_parent_tx = self.get_message_parent_transaction_cf();
+                    let msg_child_tx = self.get_message_child_transaction_cf();
 
-        let columns = [
-            int_in_msg_cf,
-            ext_in_msg_cf,
-            boc_cf,
-            out_msgs_cf,
-            depth_cf,
-            processed_cf,
-            msg_parent_tx,
-            msg_child_tx,
-        ];
+                    [
+                        int_in_msg_cf,
+                        ext_in_msg_cf,
+                        boc_cf,
+                        out_msgs_cf,
+                        depth_cf,
+                        processed_cf,
+                        msg_parent_tx,
+                        msg_child_tx,
+                    ]
+                };
 
-        let key = get_key_bytes(transaction.lt(), transaction.hash());
-
-        for c in columns {
-            self.db.delete_cf(&c, key.as_slice())?;
-        }
-
-        if !transaction.children().is_empty() {
-            for i in transaction.children().iter() {
-                self.clean_transaction_tree(i)?;
+                let processed_cf = self.get_tx_processed_cf();
+                let iter = self.db.iterator_cf(&processed_cf, IteratorMode::Start);
+                let mut total = 0;
+                let mut wb = WriteBatch::default();
+                for i in iter {
+                    match i {
+                        Ok((key, value)) => {
+                            if value.as_ref() == &[1] {
+                                for c in columns.as_slice() {
+                                    wb.delete_cf(c, key.as_ref())
+                                }
+                                total += 1;
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to clean processed transactions. Err: {:?}", e);
+                        }
+                    }
+                }
+                self.db.write(wb)?;
+                tracing::info!("Cleaned total of : {total} processed transactions");
             }
+            tokio::time::sleep(Duration::from_secs(30)).await;
         }
-
-        Ok(())
     }
 
-    pub fn try_reassemble_pending_trees(&self) -> Result<Vec<Tree>> {
-        let start_all = broxus_util::now_ms_u64();
-        let mut trees = Vec::new();
+    pub async fn try_reassemble_pending_trees(&self) -> Result<Vec<Tree>> {
+        let processed_map: Arc<FxDashMap<Vec<u8>, bool>> = Arc::new(FxDashMap::default());
+        let mut pending_transactions: Vec<Vec<u8>> = Vec::new();
 
-        let column_cf = self.get_tx_processed_cf();
+        {
+            let column_cf = self.get_tx_processed_cf();
+            let processed_cf_iterator = self.db.iterator_cf(&column_cf, IteratorMode::Start);
 
-        let mut processed_map: HashMap<Vec<u8>, bool> = HashMap::new();
-        let mut pending_transaction: Vec<Vec<u8>> = Vec::new();
-
-        let mut processed_cf_iterator = self.db.iterator_cf(&column_cf, IteratorMode::Start);
-
-        for i in processed_cf_iterator {
-            match i {
-                Ok((key, value)) => {
-                    let key = Vec::from(key.as_ref());
-                    //let (_, hash) = get_key_data_from_bytes(key.as_ref());
-                    if value.as_ref() == &[0] {
-                        processed_map.insert(key.clone(), false);
-                        pending_transaction.push(key);
+            //move current pending transactions to memory
+            for i in processed_cf_iterator {
+                match i {
+                    Ok((key, value)) => {
+                        let key = Vec::from(key.as_ref());
+                        if value.as_ref() == &[0] {
+                            processed_map.insert(key.to_vec(), false);
+                            pending_transactions.push(key);
+                        }
                     }
-                }
-                Err(e) => {
-                    tracing::error!("Failed to get pending external in messages. Err: {e}");
-                    processed_map.clear();
-                    break;
+                    Err(e) => {
+                        tracing::error!("Failed to get pending external in messages. Err: {e}");
+                        processed_map.clear();
+                        break;
+                    }
                 }
             }
         }
 
-        for pending_transaction in pending_transaction.iter() {
-            let (_, hash) = get_key_data_from_bytes(pending_transaction.as_slice());
-            tracing::debug!("Transaction {:x} picked for processing", &hash);
-            let processed_opt = processed_map.get(pending_transaction.as_slice());
-            match processed_opt {
-                Some(processed) => {
-                    tracing::debug!("Transaction {:x} processed = {}", &hash, processed);
-                    if *processed {
-                        continue;
-                    }
-                }
-                None => {
-                    tracing::error!(
-                        "Transaction {:x} does not exist in transaction processed map",
-                        hash
-                    );
-                    continue; //maybe return Err here?
-                }
-            }
+        let sem = Arc::new(tokio::sync::Semaphore::new(1000));
+        let futures_ordered = FuturesUnordered::new();
 
-            //pick only final messages
-            let out_messages = self.get_tx_out_messages(pending_transaction.as_slice())?;
+        for pending_transaction in pending_transactions.iter() {
+            let sem = sem.clone();
+            let mut map = processed_map.clone();
+            let future = async move {
+                let _g = sem.acquire();
+                let tree = self.try_process_pending_transaction(pending_transaction, &map);
 
-            if !out_messages.is_empty() {
-                continue;
-            }
+                if let Ok(Some(Tree::Full(node))) = tree.as_ref() {
+                    self.mark_transaction_tree_map_as_processed(node, &mut map);
+                }
 
-            let start = broxus_util::now_ms_u64();
-            let maybe_tree = self.try_assemble_tree(pending_transaction.as_slice());
-            match maybe_tree {
-                Ok(Tree::Full(node)) => {
-                    let end = broxus_util::now_ms_u64();
-                    tracing::info!("Assembled tree in {}", end - start);
-                    self.mark_transaction_tree_map_as_processed(&node, &mut processed_map);
-                    trees.push(Tree::Full(node));
-                }
-                Ok(Tree::Partial(_)) => {
-                    let end = broxus_util::now_ms_u64();
-                    tracing::info!("Partial Assembled tree in {}", end - start);
-                    continue;
-                }
-                Err(e) => {
-                    tracing::error!("Failed to reassemble tree. Err: {e}");
+                tree
+            };
+            futures_ordered.push(future);
+        }
+
+        let mut trees = Vec::new();
+        let completed = futures_ordered.collect::<Vec<_>>().await;
+
+        for i in completed {
+            match i {
+                Ok(Some(tree)) => {
+                    trees.push(tree);
                 }
                 _ => continue,
             }
@@ -330,35 +338,50 @@ impl TransactionStorage {
 
         let mut batch = WriteBatch::default();
 
-        let processed_start = broxus_util::now_ms_u64();
-        for (key, processed) in processed_map {
-            if processed {
-                self.mark_transaction_processed(key.as_slice(), &mut batch);
+        for i in processed_map.iter() {
+            if *i.value() {
+                self.mark_transaction_processed(i.key().as_slice(), &mut batch);
             }
         }
-        let processed_end = broxus_util::now_ms_u64();
-        tracing::info!(
-            "Marking processed time: {} ms",
-            processed_end - processed_start
-        );
 
-        // for processed_res in processed_cf_iterator {
-        //     if let Ok((key, _)) = processed_res {
-        //         let processed = processed_map.get(key.as_ref());
-        //         if let Some(true) = processed {
-        //
-        //         }
-        //     }
-        // }
-
-        let write_start = broxus_util::now_ms_u64();
         self.db.write(batch)?;
-        let write_end = broxus_util::now_ms_u64();
-        tracing::info!("Write time: {} ms", write_end - write_start);
 
-        let end_all = broxus_util::now_ms_u64();
-        tracing::info!("Pack reassemble time: {}", end_all - start_all);
         Ok(trees)
+    }
+
+    fn try_process_pending_transaction(
+        &self,
+        transaction_key: &Vec<u8>,
+        processed_map: &FxDashMap<Vec<u8>, bool>,
+    ) -> Result<Option<Tree>> {
+        let (_, hash) = get_key_data_from_bytes(transaction_key.as_slice());
+        tracing::debug!("Transaction {:x} picked for processing", &hash);
+        let processed_opt = processed_map.get(transaction_key.as_slice());
+        match processed_opt {
+            Some(processed) => {
+                tracing::debug!("Transaction {:x} processed = {}", &hash, processed.value());
+                if *processed {
+                    return Ok(None);
+                }
+            }
+            None => {
+                tracing::error!(
+                    "Transaction {:x} does not exist in transaction processed map",
+                    hash
+                );
+                return Err(StorageError::DataInconsistency);
+            }
+        }
+
+        let out_messages = self.get_tx_out_messages(transaction_key.as_slice())?;
+
+        if !out_messages.is_empty() {
+            return Ok(None);
+        }
+
+        let tree = self.try_assemble_tree(transaction_key.as_slice())?;
+
+        Ok(Some(tree))
     }
 
     pub fn try_assemble_tree(&self, key: &[u8]) -> Result<Tree> {
@@ -481,20 +504,24 @@ impl TransactionStorage {
     }
 
     fn get_from_cache_parent(&self, msg_hash: &UInt256) -> Option<TransactionNode> {
-        let mut guard = self.cache_node_parent.lock().unwrap();
+        let mut guard = self.parent_transaction_cache.lock();
         guard.get(msg_hash).cloned()
     }
 
     fn get_parent_transaction_by(&self, out_msg_hash: &UInt256) -> Result<Option<TransactionNode>> {
+        let parent = self.get_from_cache_parent(out_msg_hash);
+        if let Some(parent) = parent {
+            return Ok(Some(parent));
+        }
+
         let parent_tx_cf = self.get_message_parent_transaction_cf();
         let node = match self.db.get_cf(&parent_tx_cf, out_msg_hash)? {
             Some(parent_tx) => {
                 let (lt, hash) = get_key_data_from_bytes(parent_tx.as_slice());
                 let node = self.get_plain_node(lt, &hash)?;
                 if let Some(ref node) = node {
-                    self.cache_node_parent
+                    self.parent_transaction_cache
                         .lock()
-                        .unwrap()
                         .insert(out_msg_hash.clone(), node.clone());
                 }
                 node
@@ -557,13 +584,13 @@ impl TransactionStorage {
         Ok(())
     }
 
-    fn get_from_cache(&self, msg_hash: &UInt256) -> Option<TransactionNode> {
-        let mut guard = self.cache_node.lock().unwrap();
+    fn get_from_cache_child(&self, msg_hash: &UInt256) -> Option<TransactionNode> {
+        let mut guard = self.child_transaction_cache.lock();
         guard.get(msg_hash).cloned()
     }
 
     fn get_child_transaction_by(&self, msg_hash: &UInt256) -> Result<Option<TransactionNode>> {
-        if let Some(node) = self.get_from_cache(msg_hash) {
+        if let Some(node) = self.get_from_cache_child(msg_hash) {
             return Ok(Some(node));
         }
 
@@ -572,7 +599,7 @@ impl TransactionStorage {
             Some(child_tx) => {
                 let (lt, hash) = get_key_data_from_bytes(child_tx.as_slice());
                 let node = self.get_plain_node(lt, &hash)?;
-                let mut guard = self.cache_node.lock().unwrap();
+                let mut guard = self.child_transaction_cache.lock();
                 if let Some(ref node) = node {
                     guard.insert(*msg_hash, node.clone());
                 }
@@ -583,13 +610,26 @@ impl TransactionStorage {
         Ok(node)
     }
 
+    fn get_from_cache_boc(&self, key: &[u8]) -> Option<Vec<u8>> {
+        let mut guard = self.boc_cache.lock();
+        guard.get(key).cloned()
+    }
+
     fn get_plain_node(&self, lt: u64, tx_hash: &UInt256) -> Result<Option<TransactionNode>> {
         let boc = self.get_tx_boc_cf();
         let key = get_key_bytes(lt, tx_hash);
-        Ok(self
-            .db
-            .get_cf(&boc, key.as_slice())?
-            .map(|b| TransactionNode::new(*tx_hash, lt, b, Vec::new())))
+        let boc = match self.get_from_cache_boc(key.as_slice()) {
+            Some(boc) => Some(boc),
+            None => self.db.get_cf(&boc, key.as_slice())?,
+        };
+
+        if let Some(boc) = boc {
+            let mut guard = self.boc_cache.lock();
+            guard.insert(key.to_vec(), boc.clone());
+            Ok(Some(TransactionNode::new(*tx_hash, lt, boc, Vec::new())))
+        } else {
+            Ok(None)
+        }
     }
 
     fn get_internal_in_message(&self, key: &[u8]) -> Result<Option<UInt256>> {
@@ -611,7 +651,7 @@ impl TransactionStorage {
     }
 
     fn get_from_cache_out_msgs(&self, key: &[u8]) -> Option<Vec<UInt256>> {
-        let mut guard = self.cache_out.lock().unwrap();
+        let mut guard = self.out_messages_cache.lock();
         guard.get(key).cloned()
     }
 
@@ -628,7 +668,7 @@ impl TransactionStorage {
         for ms in children_out_messages_raw.chunks(32) {
             messages.push(UInt256::from_slice(ms));
         }
-        let mut guard = self.cache_out.lock().unwrap();
+        let mut guard = self.out_messages_cache.lock();
         guard.insert(key.to_vec(), messages.clone());
 
         Ok(messages)
@@ -681,6 +721,17 @@ mod tests {
         let columns = TransactionStorage::init_columns();
 
         DB::open_cf_descriptors(&db_opts, path, columns).expect("descr")
+    }
+    #[test]
+    pub fn get_all_data() {
+        let db = init_db();
+        let tx_processed_cf = db.cf_handle(TX_PROCESSED).expect("CHILD");
+        let tx_processed_iter = db.iterator_cf(&tx_processed_cf, IteratorMode::Start);
+        let mut i = 0;
+        for _ in tx_processed_iter {
+            i += 1;
+        }
+        println!("TOTAL UNPROCESSED: {}", i);
     }
 
     #[test]

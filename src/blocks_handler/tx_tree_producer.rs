@@ -8,7 +8,7 @@ use ton_block::{
     GetRepresentationHash, HashmapAugType, MsgAddressInt, Serializable, Transaction,
     TransactionDescr,
 };
-use ton_types::serialize_toc;
+use ton_types::{serialize_toc, UInt256};
 
 use crate::blocks_handler::kafka_producer::{KafkaProducer, Partitions};
 use crate::config::{KafkaProducerConfig, TxTreeSettings};
@@ -68,12 +68,11 @@ impl OutputHandler for SimpleHandler {
     async fn handle_output(&self, trees: &[TransactionNode]) {
         let packer = TreePacker::default();
         for tree in trees {
+            visualize_tree(tree);
             match packer.pack(tree) {
                 Ok(cell) => {
-                    if let Ok(x) = serialize_toc(&cell) {
-                        if x.len() > 20000 {
-                            println!("Tree root is {:x}. Size {}", tree.hash(), x.len());
-                        }
+                    if let Ok(boc) = serialize_toc(&cell) {
+                        tracing::info!("Tree size {} bytes", boc.len())
                     }
                 }
                 Err(e) => {
@@ -90,6 +89,13 @@ impl TxTreeProducer {
         let max_tx_depth = settings.max_transaction_depth.unwrap_or(100);
         let transaction_storage =
             TransactionStorage::new(Path::new(&settings.db_path), max_tx_depth, false)?;
+
+        let strorage_cloned = transaction_storage.clone();
+        tokio::spawn(async move {
+            if let Err(e) = strorage_cloned.clean_transaction_trees().await {
+                tracing::error!("{:?}", e)
+            }
+        });
 
         let ignored_recipients = settings
             .ignored_receivers
@@ -156,10 +162,7 @@ impl TxTreeProducer {
 
                     match description {
                         TransactionDescr::Ordinary(_) | TransactionDescr::TickTock(_) => {
-                            match self.handle_transaction(tx) {
-                                Ok(_) => (),
-                                Err(e) => tracing::info!("Failed: {e:?}"),
-                            };
+                            self.handle_transaction(tx)?;
                         }
                         _ => (),
                     }
@@ -169,7 +172,8 @@ impl TxTreeProducer {
                 Ok(true)
             })?;
 
-        let transactions = reassemble_skipped_transactions(self.transaction_storage.clone())?;
+        let transactions =
+            reassemble_skipped_transactions(self.transaction_storage.clone()).await?;
 
         for handler in self.handlers.as_slice() {
             let x = transactions.as_slice();
@@ -236,17 +240,14 @@ impl TxTreeProducer {
                 } else {
                     (Some(&message_hash), None)
                 };
-                match self.transaction_storage.add_transaction(
+                self.transaction_storage.add_transaction(
                     &tx_hash,
                     transaction.lt,
                     external_in,
                     internal_in,
                     boc.as_slice(),
                     out_msgs,
-                ) {
-                    Ok(_) => (),
-                    Err(e) => tracing::error!("Failed to add transaction: {e:?}"),
-                }
+                )?;
             }
             _ => tracing::debug!("No internal message: {hex_hash}"),
         }
@@ -261,29 +262,24 @@ pub fn prepare_record(packer: Arc<TreePacker>, tree: &TransactionNode) -> Result
     Ok((tree.hash().into_vec().into(), boc.into()))
 }
 
-pub fn reassemble_skipped_transactions(
+pub async fn reassemble_skipped_transactions(
     storage: Arc<TransactionStorage>,
 ) -> Result<Vec<TransactionNode>> {
-    let trees = storage.try_reassemble_pending_trees()?;
+    //let start = broxus_util::now_ms_u64();
+    let trees = storage.try_reassemble_pending_trees().await?;
+    //let end = broxus_util::now_ms_u64();
+    //tracing::warn!("Reassembling took {} ms", end - start);
     let mut full_trees: Vec<TransactionNode> = Vec::new();
-    for tree in trees.iter() {
+    for tree in trees {
         match tree {
             Tree::Full(transaction) => {
-                tracing::debug!(
-                    "Assembled full tree {:?}. Children len : {}",
-                    hex::encode(transaction.hash().as_slice()),
-                    transaction.children().len()
-                );
+                // tracing::info!(
+                //     "Assembled full tree {:?}. Children len : {}",
+                //     hex::encode(transaction.hash().as_slice()),
+                //     transaction.children().len()
+                // );
 
                 full_trees.push(transaction.clone());
-
-                let st = storage.clone();
-                let tx = transaction.clone();
-                tokio::spawn(async move {
-                    if let Err(e) = st.clean_transaction_tree(&tx) {
-                        tracing::error!("Failed to clean transaction tree. Err: {e}")
-                    }
-                });
             }
             Tree::Partial(transaction) => {
                 tracing::debug!(
@@ -301,21 +297,21 @@ pub fn reassemble_skipped_transactions(
     Ok(full_trees)
 }
 
-// pub fn visualize_tree(tree: &TransactionNode) {
-//     println!("------------------------------------------------------");
-//     println!("ROOT IS: {}", hex::encode(tree.hash().as_slice()));
-//     for n in tree.children() {
-//         visualize_ancestor(tree.hash(), n);
-//     }
-// }
-//
-// fn visualize_ancestor(parent_hash: &UInt256, node: &TransactionNode) {
-//     println!(
-//         "Child: {}. Parent: {}",
-//         hex::encode(node.hash().as_slice()),
-//         hex::encode(parent_hash.as_slice())
-//     );
-//     for c in node.children() {
-//         visualize_ancestor(node.hash(), c);
-//     }
-// }
+pub fn visualize_tree(tree: &TransactionNode) {
+    println!("------------------------------------------------------");
+    println!("ROOT IS: {}", hex::encode(tree.hash().as_slice()));
+    for n in tree.children() {
+        visualize_ancestor(tree.hash(), n);
+    }
+}
+
+fn visualize_ancestor(parent_hash: &UInt256, node: &TransactionNode) {
+    println!(
+        "Child: {}. Parent: {}",
+        hex::encode(node.hash().as_slice()),
+        hex::encode(parent_hash.as_slice())
+    );
+    for c in node.children() {
+        visualize_ancestor(node.hash(), c);
+    }
+}
