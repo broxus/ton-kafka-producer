@@ -51,27 +51,21 @@ impl ArchivesScanner {
         for task in self
             .list
             .lines()
-            .filter_map(|pat| match std::fs::read(pat) {
-                Ok(a) => Some((pat.to_string(), a)),
+            .filter_map(|path| match std::fs::read(path) {
+                Ok(a) => Some((path.to_owned(), a)),
                 Err(e) => {
-                    pb.println(format!(
-                        "Failed reading archive. Filename: {}, : {:?}",
-                        pat, e
-                    ));
+                    pb.println(format!("Failed reading archive {path}: {e:?}"));
                     None
                 }
             })
-            .filter_map(|(pat, x)| match parse_archive(x) {
+            .filter_map(|(path, x)| match parse_archive(x) {
                 Ok(blocks) => {
-                    pb.println(format!("Parsed: {}", pat));
+                    pb.println(format!("Parsed: {path}"));
                     pb.inc(1);
                     Some(blocks)
                 }
                 Err(e) => {
-                    pb.println(format!(
-                        "Failed parsing archive. Filename: {}, : {:?}",
-                        pat, e
-                    ));
+                    pb.println(format!("Failed parsing archive {path}: {e:?}"));
                     None
                 }
             })
@@ -115,7 +109,7 @@ async fn start_writing_blocks(
             .await
             .context("Failed to handle block")
         {
-            pb.println(format!("Failed processing block {} : {:?}", block_id, e));
+            pb.println(format!("Failed processing block {block_id}: {e:?}"));
         }
         counter.fetch_sub(1, Ordering::Release);
     }

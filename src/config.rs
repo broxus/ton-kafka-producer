@@ -82,6 +82,9 @@ pub struct NodeConfig {
     /// Archives GC and uploader options
     pub archive_options: Option<ton_indexer::ArchiveOptions>,
 
+    /// Shard state GC options
+    pub state_gc_options: Option<ton_indexer::StateGcOptions>,
+
     pub start_from: Option<u32>,
 
     #[serde(default)]
@@ -120,10 +123,7 @@ impl NodeConfig {
             adnl_keys,
             rocks_db_path: self.db_path.join("rocksdb"),
             file_db_path: self.db_path.join("files"),
-            state_gc_options: Some(ton_indexer::StateGcOptions {
-                offset_sec: rand::thread_rng().gen_range(0..3600),
-                interval_sec: 3600,
-            }),
+            state_gc_options: self.state_gc_options,
             blocks_gc_options: Some(ton_indexer::BlocksGcOptions {
                 kind: ton_indexer::BlocksGcKind::BeforePreviousKeyBlock,
                 enable_for_sync: true,
@@ -156,6 +156,10 @@ impl Default for NodeConfig {
             max_db_memory_usage: ton_indexer::default_max_db_memory_usage(),
             parallel_archive_downloads: 16,
             archive_options: Some(Default::default()),
+            state_gc_options: Some(ton_indexer::StateGcOptions {
+                offset_sec: rand::thread_rng().gen_range(0..3600),
+                interval_sec: 3600,
+            }),
             start_from: None,
             adnl_options: Default::default(),
             rldp_options: Default::default(),

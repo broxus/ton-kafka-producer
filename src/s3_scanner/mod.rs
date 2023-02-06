@@ -59,7 +59,7 @@ impl S3Scanner {
                     {
                         Ok(()) => break,
                         Err(e) => {
-                            pb.println(format!("Failed processing block {} : {:?}", block_id, e));
+                            pb.println(format!("Failed processing block {block_id}: {e:?}"));
                             if !self.retry_on_error {
                                 return Err(e);
                             }
