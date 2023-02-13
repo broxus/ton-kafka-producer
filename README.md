@@ -1,11 +1,11 @@
 ## ton-kafka-producer
 
 The indexing infrastructure for TVM-compatible blockchains includes a node
-available via jRPC (link to jrpc repo) and indexer services with some high-level
-APIs for each dApp we want to index. The latter doesn’t fetch needed messages
-from the former. Instead, we use Kafka to organize a stable, consistent and
-ordered queue of records from the node and deliver it to arbitrary number of
-indexing services.
+available via [jRPC](https://github.com/broxus/everscale-jrpc) and indexer
+services with some high-level APIs for each dApp we want to index. The latter
+doesn’t fetch needed messages from the former. Instead, we use Kafka to organize
+a stable, consistent and ordered queue of records from the node and deliver it
+to arbitrary number of indexing services.
 
 The Kafka producer is a software component that connects to the blockchain node
 and deliver data to Kafka brokers, which are responsible for storing and
@@ -387,7 +387,8 @@ kafka_settings:
   mode: broxus
   raw_transaction_producer:
     topic: everscale-transactions
-    brokers: "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
+    brokers:
+      "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
     attempt_interval_ms: 100
     security_config:
       Sasl:
