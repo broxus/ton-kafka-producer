@@ -1,4 +1,10 @@
-## ton-kafka-producer
+<p align="center">
+  <a href="https://github.com/venom-blockchain/developer-program">
+    <img src="https://raw.githubusercontent.com/venom-blockchain/developer-program/main/vf-dev-program.png" alt="Logo" width="366.8" height="146.4">
+  </a>
+</p>
+
+# ton-kafka-producer
 
 The indexing infrastructure for TVM-compatible blockchains includes a node
 available via [jRPC](https://github.com/broxus/everscale-jrpc) and indexer
@@ -16,7 +22,7 @@ By organizing data in Kafka topics, the system ensures that data is properly
 ordered and available to indexer services. Thus, system can handle heavy loads,
 ensuring that each indexer database is in sync with the blockchain network
 
-Ton-kafka-producer provides three different methods of scanning blockchain data:
+It provides three different methods of scanning blockchain data:
 
 - `NetworkScanner` scans data from a running node. It uses Indexer to retrieve
   the blockchain data and scans the data using various network protocols, such
@@ -155,3 +161,11 @@ kafka_settings:
 #    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
 #    attempt_interval_ms: 100
 ```
+
+## Contributing
+
+We welcome contributions to the project! If you notice any issues or errors, feel free to open an issue or submit a pull request.
+
+## License
+
+Licensed under GPL-3.0 license ([LICENSE](/LICENSE) or https://opensource.org/license/gpl-3-0/).
