@@ -1,5 +1,36 @@
 ## ton-kafka-producer
 
+The indexing infrastructure for TVM-compatible blockchains includes a node
+available via [jRPC](https://github.com/broxus/everscale-jrpc) and indexer
+services with some high-level APIs for each dApp we want to index. The latter
+doesn’t fetch needed messages from the former. Instead, we use Kafka to organize
+a stable, consistent and ordered queue of records from the node and deliver it
+to arbitrary number of indexing services.
+
+The Kafka producer is a software component that connects to the blockchain node
+and deliver data to Kafka brokers, which are responsible for storing and
+replicating it across a Kafka cluster. Resulting stream includes information
+about transactions, blocks, and other relevant data from the blockchain network.
+
+By organizing data in Kafka topics, the system ensures that data is properly
+ordered and available to indexer services. Thus, system can handle heavy loads,
+ensuring that each indexer database is in sync with the blockchain network
+
+Ton-kafka-producer provides three different methods of scanning blockchain data:
+
+- `NetworkScanner` scans data from a running node. It uses Indexer to retrieve
+  the blockchain data and scans the data using various network protocols, such
+  as ADNL, RLD, and DHT. It then sends the scanned data to a Kafka broker. This
+  method requires a running TON node and access to its data.
+
+- `ArchivesScanner` scans data from local disk archives. It reads the blockchain
+  data from the archive files and sends the data to a Kafka broker. This method
+  requires a local copy of the blockchain archives.
+
+- `S3Scanner` scans data from S3 storage. It reads the blockchain data from the
+  specified S3 bucket and sends the data to a Kafka broker. This method requires
+  access to an S3 bucket containing blockchain data.
+
 ### Runtime requirements
 
 - CPU: 4 cores, 2 GHz
@@ -21,6 +52,11 @@
    ```
 
 ### Config example
+
+The example configuration includes settings that specify how the Kafka producer
+should connect to Kafka brokers, as well as options for securing the connection
+using SASL/SSL protocols. It also includes settings for the scan type, which
+determines how the producer retrieves data from the TON node.
 
 ```yaml
 ---
@@ -79,7 +115,8 @@ kafka_settings:
   mode: broxus
   raw_transaction_producer:
     topic: everscale-transactions
-    brokers: "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
+    brokers:
+      "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
     attempt_interval_ms: 100
     security_config:
       Sasl:
