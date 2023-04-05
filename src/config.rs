@@ -23,9 +23,9 @@ pub struct AppConfig {
     /// Scan type
     pub scan_type: ScanType,
 
-    /// Kafka topics settings
+    /// Producer settings
     #[serde(default)]
-    pub kafka_settings: Option<KafkaConfig>,
+    pub producer_config: Option<ProducerConfig>,
 
     /// log4rs settings.
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
@@ -193,9 +193,40 @@ pub struct StatesConfig {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "mode", rename_all = "camelCase")]
-pub enum KafkaConfig {
-    Broxus(BroxusKafkaConfig),
-    Gql(GqlKafkaConfig),
+pub enum HandlerConfig {
+    Example,
+    Kafka(TreesKafkaConfig),
+    Api(ApiProducerConfig),
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiProducerConfig {
+    pub request_url: String,
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, Deserialize)]
+pub struct TreeAssemblerConfig {
+    pub storage_path: String,
+    pub handlers: Vec<HandlerConfig>,
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, Deserialize)]
+pub struct TreesKafkaConfig {
+    pub max_tree_size_bytes: u32,
+    pub max_tree_depth: u32,
+    pub kafka_settings: KafkaProducerConfig,
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "mode", rename_all = "camelCase")]
+pub enum ProducerConfig {
+    DefaultKafka(BroxusKafkaConfig),
+    GqlKafka(GqlKafkaConfig),
+    Tree(TreeAssemblerConfig),
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

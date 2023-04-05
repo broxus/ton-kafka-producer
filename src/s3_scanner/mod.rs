@@ -16,13 +16,13 @@ pub struct S3Scanner {
 }
 
 impl S3Scanner {
-    pub async fn new(kafka_settings: KafkaConfig, config: S3ScannerConfig) -> Result<Self> {
+    pub async fn new(producer_config: ProducerConfig, config: S3ScannerConfig) -> Result<Self> {
         let downloader = ArchiveDownloader::new(config.s3_config)
             .await
             .context("Failed to create S3 archive downloader")?;
 
         Ok(Self {
-            handler: Arc::new(BlocksHandler::new(Some(kafka_settings))?),
+            handler: Arc::new(BlocksHandler::new(Some(producer_config))?),
             downloader,
             retry_on_error: config.retry_on_error,
         })

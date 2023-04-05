@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use argh::FromArgs;
+use base64::Engine;
 use broxus_util::alloc::profiling;
 use everscale_jrpc_server::{JrpcServer, JrpcState};
 use pomfrit::formatter::*;
@@ -67,7 +68,7 @@ async fn run(app: App) -> Result<()> {
             let jrpc_state = Arc::new(JrpcState::default());
 
             let engine = NetworkScanner::new(
-                config.kafka_settings,
+                config.producer_config,
                 node_config,
                 global_config,
                 jrpc_state.clone(),
@@ -107,7 +108,7 @@ async fn run(app: App) -> Result<()> {
         }
         ScanType::FromArchives { list_path } => {
             let kafka_settings = config
-                .kafka_settings
+                .producer_config
                 .context("No kafka settings provided for archives scan")?;
 
             let scanner = ArchivesScanner::new(kafka_settings, list_path)
@@ -117,7 +118,7 @@ async fn run(app: App) -> Result<()> {
         }
         ScanType::FromS3(scanner_config) => {
             let kafka_settings = config
-                .kafka_settings
+                .producer_config
                 .context("No kafka settings provided for s3 archives scan")?;
 
             let scanner = S3Scanner::new(kafka_settings, scanner_config)
@@ -234,7 +235,8 @@ impl std::fmt::Display for Metrics<'_> {
         }
 
         for (overlay_id, overlay_metrics) in indexer.network_overlay_metrics() {
-            let overlay_id = base64::encode(overlay_id.as_slice());
+            let overlay_id =
+                base64::engine::general_purpose::STANDARD.encode(overlay_id.as_slice());
 
             f.begin_metric("overlay_owned_broadcasts_len")
                 .label(OVERLAY_ID, &overlay_id)

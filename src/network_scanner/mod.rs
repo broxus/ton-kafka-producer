@@ -19,13 +19,13 @@ pub struct NetworkScanner {
 
 impl NetworkScanner {
     pub async fn new(
-        kafka_settings: Option<KafkaConfig>,
+        kafka_settings: Option<ProducerConfig>,
         node_settings: NodeConfig,
         global_config: ton_indexer::GlobalConfig,
         jrpc_state: Arc<JrpcState>,
     ) -> Result<Arc<Self>> {
         let requests_consumer_config = match &kafka_settings {
-            Some(KafkaConfig::Gql(gql)) => gql.requests_consumer.clone(),
+            Some(ProducerConfig::GqlKafka(gql)) => gql.requests_consumer.clone(),
             _ => None,
         };
 
@@ -78,8 +78,8 @@ struct BlocksSubscriber {
 }
 
 impl BlocksSubscriber {
-    fn new(config: Option<KafkaConfig>, jrpc_state: Arc<JrpcState>) -> Result<Arc<Self>> {
-        let extract_all = matches!(&config, Some(KafkaConfig::Gql(_)));
+    fn new(config: Option<ProducerConfig>, jrpc_state: Arc<JrpcState>) -> Result<Arc<Self>> {
+        let extract_all = matches!(&config, Some(ProducerConfig::GqlKafka(_)));
 
         Ok(Arc::new(Self {
             handler: BlocksHandler::new(config)?,

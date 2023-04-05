@@ -16,11 +16,11 @@ pub struct ArchivesScanner {
 }
 
 impl ArchivesScanner {
-    pub fn new(kafka_settings: KafkaConfig, list_path: PathBuf) -> Result<Self> {
+    pub fn new(producer_config: ProducerConfig, list_path: PathBuf) -> Result<Self> {
         let list = std::fs::read_to_string(list_path)?;
 
         Ok(Self {
-            handler: Arc::new(BlocksHandler::new(Some(kafka_settings))?),
+            handler: Arc::new(BlocksHandler::new(Some(producer_config))?),
             list,
         })
     }

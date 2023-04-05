@@ -1,27 +1,40 @@
+pub use crate::blocks_handler::kafka_producer::{KafkaProducer, Partitions};
+
 use anyhow::Result;
 use bytes::Bytes;
 use ton_indexer::utils::*;
+use tx_tree_producer::TxTreeProducer;
 
 use self::broxus_producer::*;
 use self::gql_producer::*;
 use crate::config::*;
+use crate::output_handlers::prepare_handlers;
 
 mod broxus_producer;
 mod gql_producer;
 mod kafka_producer;
+mod tx_tree_producer;
 
 #[allow(clippy::large_enum_variant)]
 pub enum BlocksHandler {
     Broxus(BroxusProducer),
     Gql(GqlProducer),
+    Tree(TxTreeProducer),
     None,
 }
 
 impl BlocksHandler {
-    pub fn new(config: Option<KafkaConfig>) -> Result<Self> {
+    pub fn new(config: Option<ProducerConfig>) -> Result<Self> {
         match config {
-            Some(KafkaConfig::Broxus(config)) => BroxusProducer::new(config).map(Self::Broxus),
-            Some(KafkaConfig::Gql(config)) => GqlProducer::new(config).map(Self::Gql),
+            Some(ProducerConfig::DefaultKafka(config)) => {
+                BroxusProducer::new(config).map(Self::Broxus)
+            }
+            Some(ProducerConfig::GqlKafka(config)) => GqlProducer::new(config).map(Self::Gql),
+            Some(ProducerConfig::Tree(config)) => {
+                let handlers = prepare_handlers(config.handlers)?;
+                let producer = TxTreeProducer::new(config.storage_path, handlers)?;
+                Ok(Self::Tree(producer))
+            }
             None => Ok(Self::None),
         }
     }
@@ -53,6 +66,7 @@ impl BlocksHandler {
                     .handle_block(block_stuff, block_data, block_proof, shard_state)
                     .await
             }
+            Self::Tree(producer) => producer.handle_block(block_stuff.block()).await,
             Self::None => Ok(()),
         }
     }
