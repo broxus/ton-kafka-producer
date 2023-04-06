@@ -30,11 +30,10 @@ async fn main() -> Result<()> {
         logger.without_time().init();
     }
 
-    tracing::info!(version = VERSION);
-
     let any_signal = broxus_util::any_signal(broxus_util::TERMINATION_SIGNALS);
 
-    let run = run(argh::from_env());
+    let ArgsOrVersion(app) = argh::from_env();
+    let run = run(app);
 
     tokio::select! {
         result = run => result,
@@ -50,6 +49,8 @@ async fn main() -> Result<()> {
 }
 
 async fn run(app: App) -> Result<()> {
+    tracing::info!(version = VERSION);
+
     let config: AppConfig = broxus_util::read_config(app.config)?;
     countme::enable(true);
 
