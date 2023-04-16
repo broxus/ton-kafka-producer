@@ -165,18 +165,6 @@ impl TransactionStorage {
         wb.put_cf(&processed_cf, key, [1]);
     }
 
-    fn mark_transaction_tree_map_as_processed(
-        &self,
-        transaction: &TransactionNode,
-        tree_map: &mut Arc<FxDashMap<Vec<u8>, bool>>,
-    ) {
-        tree_map.insert(transaction.db_key(), true);
-
-        for i in transaction.children() {
-            self.mark_transaction_tree_map_as_processed(i, tree_map);
-        }
-    }
-
     pub async fn clean_transaction_trees(&self) -> Result<()> {
         loop {
             {
@@ -275,7 +263,7 @@ impl TransactionStorage {
             let tree = self.try_process_pending_transaction(pending_transaction)?;
 
             if let Some(Tree::Full(node)) = tree {
-                self.mark_transaction_tree_map_as_processed(&node, &mut processed_state_map);
+                mark_transaction_tree_map_as_processed(&node, &mut processed_state_map);
                 trees.push(Tree::Full(node));
             }
         }
@@ -591,5 +579,16 @@ impl TransactionStorage {
         guard.insert(key.to_vec(), messages.clone());
 
         Ok(messages)
+    }
+}
+
+fn mark_transaction_tree_map_as_processed(
+    transaction: &TransactionNode,
+    tree_map: &mut Arc<FxDashMap<Vec<u8>, bool>>,
+) {
+    tree_map.insert(transaction.db_key(), true);
+
+    for i in transaction.children() {
+        mark_transaction_tree_map_as_processed(i, tree_map);
     }
 }
