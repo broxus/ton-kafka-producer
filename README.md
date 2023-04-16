@@ -37,6 +37,41 @@ It provides three different methods of scanning blockchain data:
   specified S3 bucket and sends the data to a Kafka broker. This method requires
   access to an S3 bucket containing blockchain data.
 
+### Tree producer mode
+Tree producer can send the scanned data to a generic output
+e.g. Kafka broker (in such case TTP works similar to Kafka Producer), external REST API or simply write trees to stdout.
+This can be achieved by creating a Rust struct with intended behaviour and implementing
+OutputHandler trait for such struct.
+The only requirement is a running EVER node and access to its data.
+Transaction tree producer DOES NOT store completed assembled trees in its memory
+or internal storage. It simply produces trees to some output.
+
+For handlers config property you can use modes simple, kafka or api out of the box.
+If you want to use your own implementation of output handler you have to implement OutputHandler trait,
+specify additional configuration if necessary and use your new camelCase name of your struct for mode property.
+It is allowed to use multiple outputs in the same time since handlers is array.
+
+### How to unpack output base64 which is boc of tree packed into cell
+Decode base64 into array of bytes.
+
+Deserialize array of bytes into a TVM cell representation.
+
+Take the first bit of the cell. If it equals to 1, then the first cell refers directly to the Transaction. If tree of cells is packed correctly, the top-level cell always refers to the Transaction, so the first bit is always 1. If this is not the case, then the cell is already invalid.
+
+Next, check the second bit of the cell. If it exists and equals to 1, then it refers to a node similar to the root of the tree. That is, this cell contains a reference to the cell with the transaction and references to nodes with child transactions.
+
+Similarly, check the 3rd bit.
+
+In a correctly packed tree bits 2 and 3 cannot exist and equal to 0 in the same time.
+
+The check for the 4th bit is different from bits 2 and 3. If the 4th bit exists and equals to 1, then process this bit and the cell references similar to the 2nd and 3rd bits. This means that the current transaction has only 3 child transactions.
+If the 4th bit is 0, then it means that the transaction has more than 3 child transactions.
+
+In this case, the cell under the 4th reference is processed as follows:
+The first bit must be equal to 0, meaning that you have encountered a node containing only descendants of the previous transaction.
+
+After this, sequentially check all bits for values of 1 or 0. With 1, the corresponding reference will refer to a node similar to the root. With 0, it will refer to a node similar to the current one."
+
 ### Runtime requirements
 
 - CPU: 4 cores, 2 GHz
@@ -117,24 +152,63 @@ scan_type:
     # # Allowed DB size in bytes. Default: one third of all machine RAM
     # max_db_memory_usage: 3000000000
 
-kafka_settings:
-  mode: broxus
-  raw_transaction_producer:
-    topic: everscale-transactions
-    brokers:
-      "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
-    attempt_interval_ms: 100
-    security_config:
-      Sasl:
-        security_protocol: "SASL_SSL"
-        ssl_ca_location: "client.pem"
-        sasl_mechanism: "sasl mechanism"
-        sasl_username: "your sasl username"
-        sasl_password: "your sasl password"
-# OR gql kafka producer
-#
-#kafka_settings:
-#  mode: gql
+
+producer_config:
+  mode: tree
+  storage_path: "./db"
+  handlers:
+    -
+      mode: example
+
+#tree api producer config      
+#producer_config:
+#  mode: tree
+#  storage_path: "./db"
+#  handlers:
+#    -
+#      mode: api
+#      request_url: "https://api.com/"
+
+#tree kafka producer config      
+#producer_config:
+#  mode: tree
+#  storage_path: "./db"
+#  handlers:
+#    -
+#      mode: kafka
+#      max_tree_size_bytes: 2000
+#      max_tree_depth: 100
+#      kafka_settings:
+#      raw_transaction_producer:
+#        topic: everscale-transactions
+#        brokers: "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
+#        attempt_interval_ms: 100
+#        security_config:
+#          Sasl:
+#          security_protocol: "SASL_SSL"
+#          ssl_ca_location: "client.pem"
+#          sasl_mechanism: "sasl mechanism"
+#          sasl_username: "your sasl username"
+#          sasl_password: "your sasl password"  
+
+#Default kafka producer config
+#producer_config:
+#  mode: defaultKafka
+#  raw_transaction_producer:
+#    topic: everscale-transactions
+#    brokers: "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
+#    attempt_interval_ms: 100
+#    security_config:
+#      Sasl:
+#        security_protocol: "SASL_SSL"
+#        ssl_ca_location: "client.pem"
+#        sasl_mechanism: "sasl mechanism"
+#        sasl_username: "your sasl username"
+#        sasl_password: "your sasl password"
+
+
+#producer_config:
+#  mode: gqlKafka
 #  requests_consumer:
 #    topic: gql.requests
 #    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
