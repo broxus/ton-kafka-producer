@@ -6,7 +6,9 @@ use argh::FromArgs;
 use base64::Engine;
 use broxus_util::alloc::profiling;
 use everscale_jrpc_server::{JrpcServer, JrpcState};
+use is_terminal::IsTerminal;
 use pomfrit::formatter::*;
+use tracing_subscriber::EnvFilter;
 
 use ton_kafka_producer::archives_scanner::*;
 use ton_kafka_producer::config::*;
@@ -18,15 +20,21 @@ static GLOBAL: broxus_util::alloc::Allocator = ton_indexer::alloc::allocator();
 
 #[tokio::main(worker_threads = 16)]
 async fn main() -> Result<()> {
-    if atty::is(atty::Stream::Stdout) {
-        tracing_subscriber::fmt::init();
+    let logger = tracing_subscriber::fmt().with_env_filter(
+        EnvFilter::builder()
+            .with_default_directive(tracing::Level::INFO.into())
+            .from_env_lossy(),
+    );
+    if std::io::stdout().is_terminal() {
+        logger.init();
     } else {
-        tracing_subscriber::fmt::fmt().without_time().init();
+        logger.without_time().init();
     }
 
     let any_signal = broxus_util::any_signal(broxus_util::TERMINATION_SIGNALS);
 
-    let run = run(argh::from_env());
+    let ArgsOrVersion(app) = argh::from_env();
+    let run = run(app);
 
     tokio::select! {
         result = run => result,
@@ -42,6 +50,8 @@ async fn main() -> Result<()> {
 }
 
 async fn run(app: App) -> Result<()> {
+    tracing::info!(version = VERSION);
+
     let config: AppConfig = broxus_util::read_config(app.config)?;
     countme::enable(true);
 
@@ -363,3 +373,39 @@ async fn memory_profiler() {
         is_active = !is_active;
     }
 }
+
+struct ArgsOrVersion<T: argh::FromArgs>(T);
+
+impl<T: argh::FromArgs> argh::TopLevelCommand for ArgsOrVersion<T> {}
+
+impl<T: argh::FromArgs> argh::FromArgs for ArgsOrVersion<T> {
+    fn from_args(command_name: &[&str], args: &[&str]) -> Result<Self, argh::EarlyExit> {
+        /// Also use argh for catching `--version`-only invocations
+        #[derive(argh::FromArgs)]
+        struct Version {
+            /// print version information and exit
+            #[argh(switch, short = 'v')]
+            pub version: bool,
+        }
+
+        match Version::from_args(command_name, args) {
+            Ok(v) if v.version => Err(argh::EarlyExit {
+                output: format!("{} {VERSION}", command_name.first().unwrap_or(&""),),
+                status: Ok(()),
+            }),
+            Err(exit) if exit.status.is_ok() => {
+                let help = match T::from_args(command_name, &["--help"]) {
+                    Ok(_) => unreachable!(),
+                    Err(exit) => exit.output,
+                };
+                Err(argh::EarlyExit {
+                    output: format!("{help}  -v, --version     print version information and exit"),
+                    status: Ok(()),
+                })
+            }
+            _ => T::from_args(command_name, args).map(Self),
+        }
+    }
+}
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");

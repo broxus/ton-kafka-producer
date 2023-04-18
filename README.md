@@ -218,22 +218,27 @@ producer_config:
 #    topic: gql.blocks
 #    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
 #    attempt_interval_ms: 100
+#    message_max_size: 4000000
 #  message_producer:
 #    topic: gql.messages
 #    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
 #    attempt_interval_ms: 100
+#    message_max_size: 4000000
 #  transaction_producer:
 #    topic: gql.transactions
 #    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
 #    attempt_interval_ms: 100
+#    message_max_size: 4000000
 #  account_producer:
 #    topic: gql.accounts
 #    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
 #    attempt_interval_ms: 100
+#    message_max_size: 4000000
 #  block_proof_producer:
 #    topic: gql.blocks_signatures
 #    brokers: "1.2.3.4:20001, 1.2.3.4:20002, 1.2.3.4:20003"
 #    attempt_interval_ms: 100
+#    message_max_size: 4000000
 ```
 
 ## Contributing
