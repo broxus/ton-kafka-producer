@@ -37,8 +37,9 @@ tokio = { version = "1", features = ["full", "parking_lot"] }
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }
 ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor.git" }
-ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
+
+ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json", branch = "old" }
 
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = [
     "count-cells",
@@ -64,3 +65,9 @@ maintainer-scripts = "contrib/"
 
 [package.metadata.deb.systemd-units]
 unit-scripts = "contrib/"
+
+[patch."https://github.com/broxus/ton-labs-block.git"]
+ton_block = { git = "https://www.github.com/broxus/ton-labs-block.git", branch = "old" }
+
+[patch."https://github.com/broxus/ton-labs-types.git"]
+ton_types = { git = "https://www.github.com/broxus/ton-labs-types.git", branch = "old" }
