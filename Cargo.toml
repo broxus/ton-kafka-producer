@@ -23,6 +23,7 @@ everscale-network = "0.5.0"
 futures-util = "0.3"
 hex = "0.4"
 indicatif = "0.17"
+is-terminal = "0.4.7"
 once_cell = "1.14"
 parking_lot = { version = "0.12.0", features = ["hardware-lock-elision"] }
 pomfrit = "0.1"
@@ -59,7 +60,7 @@ ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = [
 ] }
 archive-downloader = { git = "https://github.com/broxus/ton-indexer.git" }
 tracing = "0.1.34"
-tracing-subscriber = "0.3"
+tracing-subscriber = {version = "0.3", features = ["env-filter"]}
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }
@@ -77,3 +78,12 @@ maintainer-scripts = "contrib/"
 
 [package.metadata.deb.systemd-units]
 unit-scripts = "contrib/"
+
+[patch."https://github.com/broxus/ton-labs-block.git"]
+ton_block = { git = "https://www.github.com/broxus/ton-labs-block.git", branch = "old" }
+
+[patch."https://github.com/broxus/ton-labs-block-json.git"]
+ton_block_json = { git = "https://www.github.com/broxus/ton-labs-block-json.git", branch = "old" }
+
+[patch."https://github.com/broxus/ton-labs-types.git"]
+ton_types = { git = "https://www.github.com/broxus/ton-labs-types.git", branch = "old" }

@@ -161,35 +161,35 @@ producer_config:
       mode: example
 
 #tree api producer config      
-#producer_config:
-#  mode: tree
-#  storage_path: "./db"
-#  handlers:
-#    -
-#      mode: api
-#      request_url: "https://api.com/"
+producer_config:
+  mode: tree
+  storage_path: "./db"
+  handlers:
+    -
+      mode: api
+      request_url: "https://api.com/"
 
 #tree kafka producer config      
-#producer_config:
-#  mode: tree
-#  storage_path: "./db"
-#  handlers:
-#    -
-#      mode: kafka
-#      max_tree_size_bytes: 2000
-#      max_tree_depth: 100
-#      kafka_settings:
-#      raw_transaction_producer:
-#        topic: everscale-transactions
-#        brokers: "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
-#        attempt_interval_ms: 100
-#        security_config:
-#          Sasl:
-#          security_protocol: "SASL_SSL"
-#          ssl_ca_location: "client.pem"
-#          sasl_mechanism: "sasl mechanism"
-#          sasl_username: "your sasl username"
-#          sasl_password: "your sasl password"  
+producer_config:
+  mode: tree
+  storage_path: "./db"
+  handlers:
+    -
+      mode: kafka
+      max_tree_size_bytes: 2000
+      max_tree_depth: 100
+      kafka_settings:
+      raw_transaction_producer:
+        topic: everscale-transactions
+        brokers: "kafka1.my.website:20001, kafka1.my.website:20002, kafka1.my.website:20003"
+        attempt_interval_ms: 100
+        security_config:
+          Sasl:
+          security_protocol: "SASL_SSL"
+          ssl_ca_location: "client.pem"
+          sasl_mechanism: "sasl mechanism"
+          sasl_username: "your sasl username"
+          sasl_password: "your sasl password"  
 
 #Default kafka producer config
 #producer_config:
