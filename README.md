@@ -131,7 +131,7 @@ kafka_settings:
         sasl_mechanism: "sasl mechanism"
         sasl_username: "your sasl username"
         sasl_password: "your sasl password"
-# OR gql kafka producer
+# OR gql kafka producer if you want to get json messages
 #
 #kafka_settings:
 #  mode: gql
