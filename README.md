@@ -118,7 +118,7 @@ scan_type:
     # max_db_memory_usage: 3000000000
 
 kafka_settings:
-  mode: broxus
+  mode: broxus # it will try to write to 0..8 partition in topic, so, make sure that you have all set.
   raw_transaction_producer:
     topic: everscale-transactions
     brokers:
@@ -131,7 +131,7 @@ kafka_settings:
         sasl_mechanism: "sasl mechanism"
         sasl_username: "your sasl username"
         sasl_password: "your sasl password"
-# OR gql kafka producer
+# OR gql kafka producer if you want to get json messages
 #
 #kafka_settings:
 #  mode: gql
