@@ -42,7 +42,7 @@ echo 'INFO: Running native installation'
 
 echo 'INFO: installing and updating dependencies'
 sudo apt update && sudo apt upgrade
-sudo apt install build-essential llvm clang pkg-config libssl-dev
+sudo apt install build-essential llvm clang pkg-config libssl-dev libsasl2-dev
 
 echo 'INFO: installing Rust'
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
