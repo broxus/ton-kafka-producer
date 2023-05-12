@@ -391,7 +391,7 @@ impl TransactionStorage {
                         Some(retry_count) => {
                             let retry_count = *retry_count;
                             if retry_count < 5 {
-                                guard.insert(hash.clone(), retry_count + 1);
+                                guard.insert(*hash, retry_count + 1);
                                 Ok(Tree::Partial(current_root))
                             } else {
                                 guard.remove(current_root.hash());
@@ -399,7 +399,7 @@ impl TransactionStorage {
                             }
                         }
                         None => {
-                            guard.insert(current_root.hash().clone(), 1);
+                            guard.insert(*current_root.hash(), 1);
                             Ok(Tree::Partial(current_root))
                         }
                     };
