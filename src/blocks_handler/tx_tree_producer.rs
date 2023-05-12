@@ -119,14 +119,16 @@ impl TxTreeProducer {
                 } else {
                     (Some(&message_hash), None)
                 };
-                self.transaction_storage.add_transaction(
+                if let Err(e) = self.transaction_storage.add_transaction(
                     &tx_hash,
                     transaction.lt,
                     external_in,
                     internal_in,
                     boc.as_slice(),
                     out_msgs,
-                )?;
+                ) {
+                    tracing::warn!("{e:?}");
+                }
             }
             _ => tracing::debug!("No internal message: {hex_hash}"),
         }
@@ -145,6 +147,14 @@ pub async fn get_transaction_trees(
     for tree in trees {
         match tree {
             Tree::Full(transaction) => {
+                full_trees.push(transaction.clone());
+            }
+            Tree::AssembleFailed(transaction) => {
+                tracing::debug!(
+                    "Assembled partial tree {:?} with errors. Children len : {}",
+                    hex::encode(transaction.hash().as_slice()),
+                    transaction.children().len()
+                );
                 full_trees.push(transaction.clone());
             }
             Tree::Partial(transaction) => {

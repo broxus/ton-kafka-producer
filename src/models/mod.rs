@@ -6,6 +6,7 @@ use ton_types::UInt256;
 pub enum Tree {
     Full(TransactionNode),
     Partial(TransactionNode),
+    AssembleFailed(TransactionNode),
     Empty,
 }
 

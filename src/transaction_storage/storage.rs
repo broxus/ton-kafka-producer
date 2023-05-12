@@ -1,4 +1,5 @@
 use crate::models::TransactionNode;
+use std::collections::HashMap;
 //use futures_util::stream::StreamExt;
 use parking_lot::Mutex;
 use rocksdb::{BoundColumnFamily, ColumnFamilyDescriptor, IteratorMode, Options, WriteBatch, DB};
@@ -10,7 +11,7 @@ use ton_types::{FxDashMap, UInt256};
 
 use crate::models::Tree;
 use crate::utils::error::{Result, StorageError};
-use crate::utils::storage_utils::{get_key_bytes, get_key_data_from_bytes, visualize_tree};
+use crate::utils::storage_utils::{get_key_bytes, get_key_data_from_bytes};
 
 const TX_EXT_IN_MSG: &str = "tx_external_in_msgs";
 const TX_INT_IN_MSG: &str = "tx_internal_in_msgs";
@@ -27,6 +28,8 @@ pub struct TransactionStorage {
     parent_transaction_cache: Mutex<schnellru::LruMap<UInt256, TransactionNode, ByMemoryUsage>>,
     out_messages_cache: Mutex<schnellru::LruMap<Vec<u8>, Vec<UInt256>, ByMemoryUsage>>,
     boc_cache: Mutex<schnellru::LruMap<Vec<u8>, Vec<u8>, ByMemoryUsage>>,
+
+    failed_trees: Mutex<HashMap<UInt256, u32>>,
 }
 
 impl TransactionStorage {
@@ -84,6 +87,7 @@ impl TransactionStorage {
                 1024 * 1024 * 1024,
             )),
             boc_cache: Mutex::new(schnellru::LruMap::with_memory_budget(1024 * 1024 * 1024)),
+            failed_trees: Default::default(),
         }))
     }
 
@@ -262,9 +266,16 @@ impl TransactionStorage {
 
             let tree = self.try_process_pending_transaction(pending_transaction)?;
 
-            if let Some(Tree::Full(node)) = tree {
-                mark_transaction_tree_map_as_processed(&node, &mut processed_state_map);
-                trees.push(Tree::Full(node));
+            match tree {
+                Some(Tree::Full(node)) => {
+                    mark_transaction_tree_map_as_processed(&node, &mut processed_state_map);
+                    trees.push(Tree::Full(node));
+                }
+                Some(Tree::AssembleFailed(node)) => {
+                    mark_transaction_tree_map_as_processed(&node, &mut processed_state_map);
+                    trees.push(Tree::AssembleFailed(node));
+                }
+                _ => (),
             }
         }
 
@@ -348,7 +359,7 @@ impl TransactionStorage {
                                 if let Err(e) =
                                     self.append_children_transaction_tree(i, &mut parent)
                                 {
-                                    println!("Failed to append child to parent. Err: {e:?}");
+                                    tracing::debug!("Failed to append child to parent. Err: {e:?}");
                                     return Ok(Tree::Partial(current_root));
                                 }
                             }
@@ -369,11 +380,29 @@ impl TransactionStorage {
                     return Ok(Tree::Full(current_root));
                 }
                 _ => {
-                    visualize_tree(&current_root);
-                    tracing::error!("Failed to assembly tree");
-                    return Err(StorageError::BadTransaction(hex::encode(
-                        current_root.hash(),
-                    )));
+                    tracing::warn!(
+                        "Can not assemble full tree with root transaction: {:x}. Retying...",
+                        &current_root.hash()
+                    );
+
+                    let mut guard = self.failed_trees.lock();
+                    let hash = current_root.hash();
+                    return match guard.get(hash) {
+                        Some(retry_count) => {
+                            let retry_count = *retry_count;
+                            if retry_count < 5 {
+                                guard.insert(hash.clone(), retry_count + 1);
+                                Ok(Tree::Partial(current_root))
+                            } else {
+                                guard.remove(current_root.hash());
+                                Ok(Tree::AssembleFailed(current_root))
+                            }
+                        }
+                        None => {
+                            guard.insert(current_root.hash().clone(), 1);
+                            Ok(Tree::Partial(current_root))
+                        }
+                    };
                 }
             }
         }
