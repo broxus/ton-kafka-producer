@@ -1,6 +1,4 @@
 use crate::models::TransactionNode;
-use std::collections::HashMap;
-//use futures_util::stream::StreamExt;
 use parking_lot::Mutex;
 use rocksdb::{BoundColumnFamily, ColumnFamilyDescriptor, IteratorMode, Options, WriteBatch, DB};
 use schnellru::ByMemoryUsage;
@@ -29,7 +27,7 @@ pub struct TransactionStorage {
     out_messages_cache: Mutex<schnellru::LruMap<Vec<u8>, Vec<UInt256>, ByMemoryUsage>>,
     boc_cache: Mutex<schnellru::LruMap<Vec<u8>, Vec<u8>, ByMemoryUsage>>,
 
-    failed_trees: Mutex<HashMap<UInt256, u32>>,
+    failed_trees: FxDashMap<UInt256, u32>,
 }
 
 impl TransactionStorage {
@@ -385,21 +383,20 @@ impl TransactionStorage {
                         &current_root.hash()
                     );
 
-                    let mut guard = self.failed_trees.lock();
                     let hash = current_root.hash();
-                    return match guard.get(hash) {
+                    return match self.failed_trees.get_mut(hash) {
                         Some(retry_count) => {
                             let retry_count = *retry_count;
                             if retry_count < 5 {
-                                guard.insert(*hash, retry_count + 1);
+                                self.failed_trees.insert(*hash, retry_count + 1);
                                 Ok(Tree::Partial(current_root))
                             } else {
-                                guard.remove(current_root.hash());
+                                self.failed_trees.remove(current_root.hash());
                                 Ok(Tree::AssembleFailed(current_root))
                             }
                         }
                         None => {
-                            guard.insert(*current_root.hash(), 1);
+                            self.failed_trees.insert(*current_root.hash(), 1);
                             Ok(Tree::Partial(current_root))
                         }
                     };
