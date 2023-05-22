@@ -114,8 +114,10 @@ scan_type:
     # # Specific block from which to run the indexer
     # start_from: 12365000
 
-    # # Allowed DB size in bytes. Default: one third of all machine RAM
-    # max_db_memory_usage: 3000000000
+    # # Internal DB options
+    # db_options:
+    #   # Allowed DB size in bytes. Default: one third of all machine RAM
+    #   max_memory_usage: 3000000000
 
 kafka_settings:
   mode: broxus # it will try to write to 0..8 partition in topic, so, make sure that you have all set.

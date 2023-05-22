@@ -1,6 +1,6 @@
 [package]
 name = "ton-kafka-producer"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 rust-version = "1.68.2"
 license-file = "LICENSE"
@@ -11,7 +11,14 @@ anyhow = "1.0"
 argh = "0.1"
 async-trait = "0.1"
 base64 = "0.13"
-broxus-util = { version = "0.2", features = ["alloc", "alloc-profiling", "public-ip", "signal"] }
+broxus-util = { version = "0.2", features = [
+    "argh",
+    "alloc",
+    "alloc-profiling",
+    "public-ip",
+    "signal",
+    "config",
+], default-features = false }
 bytes = "1.2.1"
 chrono = "0.4.22"
 config = { version = "0.13", default-features = false, features = ["yaml"] }
@@ -39,7 +46,7 @@ ton_block = { git = "https://github.com/broxus/ton-labs-block" }
 ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor.git" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 
-ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json", branch = "old" }
+ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
 
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = [
     "count-cells",
@@ -65,9 +72,3 @@ maintainer-scripts = "contrib/"
 
 [package.metadata.deb.systemd-units]
 unit-scripts = "contrib/"
-
-[patch."https://github.com/broxus/ton-labs-block.git"]
-ton_block = { git = "https://www.github.com/broxus/ton-labs-block.git", branch = "old" }
-
-[patch."https://github.com/broxus/ton-labs-types.git"]
-ton_types = { git = "https://www.github.com/broxus/ton-labs-types.git", branch = "old" }

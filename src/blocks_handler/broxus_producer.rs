@@ -101,7 +101,7 @@ fn prepare_raw_transaction_record(
 ) -> Result<Option<TransactionRecord>> {
     let cell = raw_transaction.reference(0)?;
     let boc = ton_types::serialize_toc(&cell)?;
-    let transaction = ton_block::Transaction::construct_from(&mut cell.into())?;
+    let transaction = ton_block::Transaction::construct_from_cell(cell)?;
     match transaction.description.read_struct()? {
         ton_block::TransactionDescr::Ordinary(_) => {}
         _ => return Ok(None),

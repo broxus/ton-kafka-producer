@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
 
     let any_signal = broxus_util::any_signal(broxus_util::TERMINATION_SIGNALS);
 
-    let ArgsOrVersion(app) = argh::from_env();
+    let app = broxus_util::read_args_with_version!(_);
     let run = run(app);
 
     tokio::select! {
@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
 }
 
 async fn run(app: App) -> Result<()> {
-    tracing::info!(version = VERSION);
+    tracing::info!(version = env!("CARGO_PKG_VERSION"));
 
     let config: AppConfig = broxus_util::read_config(app.config)?;
     countme::enable(true);
@@ -74,7 +74,7 @@ async fn run(app: App) -> Result<()> {
 
             tracing::info!("initializing producer");
 
-            let jrpc_state = Arc::new(JrpcState::default());
+            let jrpc_state = Arc::new(JrpcState::new(false));
 
             let engine = NetworkScanner::new(
                 config.kafka_settings,
@@ -314,23 +314,17 @@ impl std::fmt::Display for Metrics<'_> {
 
         let ton_indexer::RocksdbStats {
             whole_db_stats,
-            uncompressed_block_cache_usage,
-            uncompressed_block_cache_pined_usage,
-            compressed_block_cache_usage,
-            compressed_block_cache_pined_usage,
+            block_cache_usage,
+            block_cache_pined_usage,
         } = indexer.get_memory_usage_stats().map_err(|e| {
             tracing::error!("failed to fetch rocksdb stats: {e:?}");
             std::fmt::Error
         })?;
 
-        f.begin_metric("rocksdb_uncompressed_block_cache_usage_bytes")
-            .value(uncompressed_block_cache_usage)?;
-        f.begin_metric("rocksdb_uncompressed_block_cache_pined_usage_bytes")
-            .value(uncompressed_block_cache_pined_usage)?;
-        f.begin_metric("rocksdb_compressed_block_cache_usage_bytes")
-            .value(compressed_block_cache_usage)?;
-        f.begin_metric("rocksdb_compressed_block_cache_pined_usage_bytes")
-            .value(compressed_block_cache_pined_usage)?;
+        f.begin_metric("rocksdb_block_cache_usage_bytes")
+            .value(block_cache_usage)?;
+        f.begin_metric("rocksdb_block_cache_pined_usage_bytes")
+            .value(block_cache_pined_usage)?;
         f.begin_metric("rocksdb_memtable_total_size_bytes")
             .value(whole_db_stats.mem_table_total)?;
         f.begin_metric("rocksdb_memtable_unflushed_size_bytes")
@@ -371,39 +365,3 @@ async fn memory_profiler() {
         is_active = !is_active;
     }
 }
-
-struct ArgsOrVersion<T: argh::FromArgs>(T);
-
-impl<T: argh::FromArgs> argh::TopLevelCommand for ArgsOrVersion<T> {}
-
-impl<T: argh::FromArgs> argh::FromArgs for ArgsOrVersion<T> {
-    fn from_args(command_name: &[&str], args: &[&str]) -> Result<Self, argh::EarlyExit> {
-        /// Also use argh for catching `--version`-only invocations
-        #[derive(argh::FromArgs)]
-        struct Version {
-            /// print version information and exit
-            #[argh(switch, short = 'v')]
-            pub version: bool,
-        }
-
-        match Version::from_args(command_name, args) {
-            Ok(v) if v.version => Err(argh::EarlyExit {
-                output: format!("{} {VERSION}", command_name.first().unwrap_or(&""),),
-                status: Ok(()),
-            }),
-            Err(exit) if exit.status.is_ok() => {
-                let help = match T::from_args(command_name, &["--help"]) {
-                    Ok(_) => unreachable!(),
-                    Err(exit) => exit.output,
-                };
-                Err(argh::EarlyExit {
-                    output: format!("{help}  -v, --version     print version information and exit"),
-                    status: Ok(()),
-                })
-            }
-            _ => T::from_args(command_name, args).map(Self),
-        }
-    }
-}
-
-const VERSION: &str = env!("CARGO_PKG_VERSION");

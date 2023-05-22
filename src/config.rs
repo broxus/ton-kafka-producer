@@ -26,11 +26,6 @@ pub struct AppConfig {
     /// Kafka topics settings
     #[serde(default)]
     pub kafka_settings: Option<KafkaConfig>,
-
-    /// log4rs settings.
-    /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
-    #[serde(default = "default_logger_settings")]
-    pub logger_settings: serde_yaml::Value,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -73,8 +68,8 @@ pub struct NodeConfig {
     /// NOTE: generates new keys if specified path doesn't exist
     pub temp_keys_path: PathBuf,
 
-    /// Allowed DB size in bytes. Default: one third of all machine RAM
-    pub max_db_memory_usage: usize,
+    /// Internal DB options.
+    pub db_options: ton_indexer::DbOptions,
 
     /// Archives map queue. Default: 16
     pub parallel_archive_downloads: usize,
@@ -130,7 +125,7 @@ impl NodeConfig {
                 ..Default::default()
             }),
             shard_state_cache_options: None, // until state cache GC will be improved
-            max_db_memory_usage: self.max_db_memory_usage,
+            db_options: self.db_options,
             archive_options: self.archive_options,
             sync_options: ton_indexer::SyncOptions {
                 old_blocks_policy,
@@ -153,7 +148,7 @@ impl Default for NodeConfig {
             adnl_port: 30303,
             db_path: "db".into(),
             temp_keys_path: "adnl-keys.json".into(),
-            max_db_memory_usage: ton_indexer::default_max_db_memory_usage(),
+            db_options: Default::default(),
             parallel_archive_downloads: 16,
             archive_options: Some(Default::default()),
             state_gc_options: Some(ton_indexer::StateGcOptions {
@@ -296,25 +291,4 @@ pub trait ConfigExt: Sized {
     fn from_file<P>(path: &P) -> Result<Self>
     where
         P: AsRef<Path>;
-}
-
-fn default_logger_settings() -> serde_yaml::Value {
-    const DEFAULT_LOG4RS_SETTINGS: &str = r##"
-    appenders:
-      stdout:
-        kind: console
-        encoder:
-          pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
-    root:
-      level: error
-      appenders:
-        - stdout
-    loggers:
-      ton_kafka_producer:
-        level: info
-        appenders:
-          - stdout
-        additive: false
-    "##;
-    serde_yaml::from_str(DEFAULT_LOG4RS_SETTINGS).unwrap()
 }

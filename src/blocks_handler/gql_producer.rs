@@ -311,11 +311,12 @@ impl DbRecord {
     ) -> Result<Self> {
         let cell = raw_transaction.reference(0)?;
         let boc = ton_types::serialize_toc(&cell)?;
-        let transaction = ton_block::Transaction::construct_from(&mut cell.clone().into())?;
+        let id = cell.repr_hash();
+        let transaction = ton_block::Transaction::construct_from_cell(cell)?;
 
         let set = ton_block_json::TransactionSerializationSet {
             transaction,
-            id: cell.repr_hash(),
+            id,
             status: ton_block::TransactionProcessingStatus::Finalized,
             block_id: Some(*block_id),
             workchain_id,
@@ -325,7 +326,7 @@ impl DbRecord {
 
         let value = ton_block_json::db_serialize_transaction("id", &set)?;
         Ok(DbRecord::Transaction {
-            id: cell.repr_hash().as_hex_string(),
+            id: id.as_hex_string(),
             data: serde_json::to_string(&value)?,
         })
     }
@@ -347,6 +348,7 @@ impl DbRecord {
             prev_account_state,
             proof: None,
             boc,
+            boc1: None,
         };
 
         let value = ton_block_json::db_serialize_account("id", &set)?;

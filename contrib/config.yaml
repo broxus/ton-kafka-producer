@@ -45,27 +45,3 @@ kafka_settings:
         sasl_mechanism: "sasl mechanism"
         sasl_username: "your sasl username"
         sasl_password: "your sasl password"
-
-# log4rs settings.
-# See https://docs.rs/log4rs/1.0.0/log4rs/ for more details
-logger_settings:
-  appenders:
-    stdout:
-      kind: console
-      encoder:
-        pattern: "{h({l})} {M} = {m} {n}"
-  root:
-    level: warn
-    appenders:
-      - stdout
-  loggers:
-    ton_indexer:
-      level: info
-      appenders:
-        - stdout
-      additive: false
-    ton_kafka_producer:
-      level: info
-      appenders:
-        - stdout
-      additive: false

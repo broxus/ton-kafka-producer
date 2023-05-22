@@ -117,7 +117,7 @@ async fn send_external_message(
         return Err(MessageBroadcastError::TooDeep(root.repr_depth()));
     }
 
-    let message = ton_block::Message::construct_from(&mut root.into())
+    let message = ton_block::Message::construct_from_cell(root)
         .map_err(MessageBroadcastError::InvalidMessage)?;
 
     let to = match message.header() {
