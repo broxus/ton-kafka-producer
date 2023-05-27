@@ -18,12 +18,12 @@ pub fn parse_archive(data: Vec<u8>) -> Result<Vec<(ton_block::BlockIdExt, Parsed
 
         match PackageEntryId::from_filename(entry.name)? {
             PackageEntryId::Block(id) => {
-                let mut parsed_entry = map.entry(id.clone()).or_default();
+                let parsed_entry = map.entry(id.clone()).or_default();
                 let block = BlockStuff::deserialize_checked(id, entry.data)?;
                 parsed_entry.block_stuff = Some((block, entry.data.to_vec().into()));
             }
             PackageEntryId::Proof(id) | PackageEntryId::ProofLink(id) => {
-                let mut parsed_entry = map.entry(id.clone()).or_default();
+                let parsed_entry = map.entry(id.clone()).or_default();
                 let proof = BlockProofStuff::deserialize(id, entry.data, is_link)?;
                 parsed_entry.block_proof_stuff = Some(proof);
             }
