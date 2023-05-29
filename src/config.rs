@@ -13,7 +13,7 @@ use ton_indexer::OldBlocksPolicy;
 pub struct AppConfig {
     /// serve states
     #[serde(default)]
-    pub rpc_config: Option<StatesConfig>,
+    pub rpc_config: Option<JrpcConfig>,
 
     /// Prometheus metrics exporter settings.
     /// Completely disable when not specified
@@ -181,8 +181,10 @@ fn default_retry_on_error() -> bool {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct StatesConfig {
+pub struct JrpcConfig {
     pub address: SocketAddr,
+    #[serde(default)]
+    pub storage: Option<everscale_jrpc_server::JrpcStorageOptions>,
 }
 
 #[allow(clippy::large_enum_variant)]

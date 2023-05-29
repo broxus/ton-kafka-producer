@@ -74,7 +74,15 @@ async fn run(app: App) -> Result<()> {
 
             tracing::info!("initializing producer");
 
-            let jrpc_state = Arc::new(JrpcState::new(false));
+            let jrpc_state = Arc::new(
+                JrpcState::new(
+                    config
+                        .rpc_config
+                        .as_ref()
+                        .and_then(|config| config.storage.clone()),
+                )
+                .context("Failed to create JRPC state")?,
+            );
 
             let engine = NetworkScanner::new(
                 config.kafka_settings,

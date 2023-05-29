@@ -784,7 +784,7 @@ dependencies = [
 [[package]]
 name = "everscale-jrpc-models"
 version = "0.1.0"
-source = "git+https://github.com/broxus/everscale-jrpc.git#5fe43817959c9e17b2488843ccc35ec767d8dd02"
+source = "git+https://github.com/broxus/everscale-jrpc.git?branch=feature/jrpc-light-server#700059ccd6e5771f66bc8faf3ebf8ced51e2348b"
 dependencies = [
  "nekoton-abi",
  "nekoton-utils",
@@ -795,16 +795,21 @@ dependencies = [
 [[package]]
 name = "everscale-jrpc-server"
 version = "0.2.1"
-source = "git+https://github.com/broxus/everscale-jrpc.git#5fe43817959c9e17b2488843ccc35ec767d8dd02"
+source = "git+https://github.com/broxus/everscale-jrpc.git?branch=feature/jrpc-light-server#700059ccd6e5771f66bc8faf3ebf8ced51e2348b"
 dependencies = [
  "anyhow",
  "arc-swap",
  "axum",
  "axum-jrpc",
+ "base64",
  "everscale-jrpc-models",
+ "fdlimit",
  "nekoton-abi",
+ "num_cpus",
  "parking_lot",
+ "rlimit",
  "rustc-hash",
+ "serde",
  "serde_json",
  "thiserror",
  "ton-indexer",
@@ -812,6 +817,7 @@ dependencies = [
  "ton_types",
  "tower",
  "tracing",
+ "weedb",
 ]
 
 [[package]]

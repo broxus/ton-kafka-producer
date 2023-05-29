@@ -133,4 +133,12 @@ impl ton_indexer::Subscriber for BlocksSubscriber {
     async fn process_full_state(&self, state: &ShardStateStuff) -> Result<()> {
         self.handler.handle_state(state).await
     }
+
+    async fn process_blocks_edge(
+        &self,
+        _: ton_indexer::ProcessBlocksEdgeContext<'_>,
+    ) -> Result<()> {
+        self.jrpc_state.handle_block_edge();
+        Ok(())
+    }
 }
