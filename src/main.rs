@@ -383,6 +383,18 @@ impl std::fmt::Display for Metrics<'_> {
         f.begin_metric("rocksdb_memtable_cache_bytes")
             .value(whole_db_stats.cache_total)?;
 
+        let cells_cache_stats = internal_metrics.cells_cache_stats;
+        f.begin_metric("cells_cache_hits")
+            .value(cells_cache_stats.hits)?;
+        f.begin_metric("cells_cache_requests")
+            .value(cells_cache_stats.requests)?;
+        f.begin_metric("cells_cache_occupied")
+            .value(cells_cache_stats.occupied)?;
+        f.begin_metric("cells_cache_hits_ratio")
+            .value(cells_cache_stats.hits_ratio)?;
+        f.begin_metric("cells_cache_size_bytes")
+            .value(cells_cache_stats.size_bytes)?;
+
         Ok(())
     }
 }
