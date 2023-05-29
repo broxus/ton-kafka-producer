@@ -58,7 +58,7 @@ checksum = "bddcadddf5e9015d310179a59bb28c4d4b9920ad0f11e8e14dbadf654890c9a6"
 [[package]]
 name = "archive-downloader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#737fc7057e326c5ded4dd774b0437fc8a92a6b2b"
+source = "git+https://github.com/broxus/ton-indexer.git#d573dcb0bb8aecf70e8c7196b583aa371adfe4d0"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -75,7 +75,7 @@ dependencies = [
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#737fc7057e326c5ded4dd774b0437fc8a92a6b2b"
+source = "git+https://github.com/broxus/ton-indexer.git#d573dcb0bb8aecf70e8c7196b583aa371adfe4d0"
 dependencies = [
  "anyhow",
  "base64",
@@ -251,9 +251,9 @@ dependencies = [
 
 [[package]]
 name = "broxus-util"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a27034f00d6518cec9a4d7dc64c78a1c9157002217af7c3fbc986a9e63eaeb1"
+checksum = "a32f9b01a0d6c581e2d795c0b3800ccd21550c65d64aa164aabf1460f10846ad"
 dependencies = [
  "argh",
  "config",
@@ -1084,7 +1084,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#737fc7057e326c5ded4dd774b0437fc8a92a6b2b"
+source = "git+https://github.com/broxus/ton-indexer.git#d573dcb0bb8aecf70e8c7196b583aa371adfe4d0"
 dependencies = [
  "anyhow",
  "base64",
@@ -1478,12 +1478,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.17"
+version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
-dependencies = [
- "cfg-if",
-]
+checksum = "518ef76f2f87365916b142844c16d8fefd85039bc5699050210a7778ee1cd1de"
 
 [[package]]
 name = "lz4-sys"
@@ -1568,14 +1565,13 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "mio"
-version = "0.8.6"
+version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b9d9a46eff5b4ff64b45a9e316a6d1e0bc719ef429cbec4dc630684212bfdf9"
+checksum = "eebffdb73fe72e917997fad08bdbf31ac50b0fa91cec93e69a0662e4264d454c"
 dependencies = [
  "libc",
- "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
- "windows-sys 0.45.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -2875,9 +2871,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.28.1"
+version = "1.28.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aa32867d44e6f2ce3385e89dceb990188b8bb0fb25b0cf576647a6f98ac5105"
+checksum = "94d7b1cfd2aa4011f2de74c2c4c63665e27a71006b0a192dcd2710272e73dfa2"
 dependencies = [
  "autocfg",
  "bytes",
@@ -2956,7 +2952,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.2.1"
-source = "git+https://github.com/broxus/ton-indexer.git#737fc7057e326c5ded4dd774b0437fc8a92a6b2b"
+source = "git+https://github.com/broxus/ton-indexer.git#d573dcb0bb8aecf70e8c7196b583aa371adfe4d0"
 dependencies = [
  "ahash",
  "anyhow",
@@ -3010,6 +3006,7 @@ dependencies = [
  "base64",
  "broxus-util",
  "bytes",
+ "bytesize",
  "cargo-husky",
  "chrono",
  "config",

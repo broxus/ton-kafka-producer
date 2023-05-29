@@ -55,6 +55,7 @@ ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = [
 archive-downloader = { git = "https://github.com/broxus/ton-indexer.git" }
 tracing = "0.1.34"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+bytesize = "1.2.0"
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }

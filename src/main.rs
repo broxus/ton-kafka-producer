@@ -84,6 +84,17 @@ async fn run(app: App) -> Result<()> {
             )
             .await
             .context("Failed to create engine")?;
+            if app.run_compaction {
+                tracing::warn!("compacting database");
+                engine.indexer().trigger_compaction().await;
+                return Ok(());
+            }
+
+            if app.print_memory_usage {
+                print_disk_usage_stats(&engine);
+
+                return Ok(());
+            }
 
             let (_exporter, metrics_writer) =
                 pomfrit::create_exporter(config.metrics_settings).await?;
@@ -139,6 +150,38 @@ async fn run(app: App) -> Result<()> {
     }
 }
 
+fn print_disk_usage_stats(engine: &Arc<NetworkScanner>) {
+    let stats = engine.indexer().db_usage_stats().unwrap();
+    let longest_table_name = stats
+        .iter()
+        .map(|s| s.cf_name.len())
+        .max()
+        .unwrap_or_default();
+    println!("{}", "=".repeat(80));
+    for stat in &stats {
+        let padded_name = stat
+            .cf_name
+            .chars()
+            .chain(std::iter::repeat(' ').take(longest_table_name - stat.cf_name.len()))
+            .collect::<String>();
+        println!(
+            "{padded_name} KEYS: {:12} VALUES: {:12} SUM: {:12}",
+            stat.keys_total,
+            stat.values_total,
+            stat.keys_total + stat.values_total
+        );
+    }
+    let total_keys = stats.iter().map(|s| s.keys_total.as_u64()).sum::<_>();
+    let total_values = stats.iter().map(|s| s.values_total.as_u64()).sum::<_>();
+    println!("{}", "=".repeat(80));
+    println!(
+        "TOTAL KEYS: {} TOTAL VALUES: {} TOTAL: {}",
+        bytesize::to_string(total_keys, true),
+        bytesize::to_string(total_values, true),
+        bytesize::to_string(total_keys + total_values, true)
+    );
+}
+
 #[derive(Debug, FromArgs)]
 #[argh(description = "A simple service to stream TON data into Kafka")]
 struct App {
@@ -149,6 +192,14 @@ struct App {
     /// path to global config file
     #[argh(option, short = 'g')]
     global_config: Option<String>,
+
+    /// compact database and exit
+    #[argh(switch)]
+    run_compaction: bool,
+
+    /// print memory usage statistics and exit
+    #[argh(switch)]
+    print_memory_usage: bool,
 }
 
 struct Metrics<'a> {
