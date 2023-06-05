@@ -1,4 +1,4 @@
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::net::{Ipv4Addr, SocketAddrV4};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -13,7 +13,7 @@ use ton_indexer::OldBlocksPolicy;
 pub struct AppConfig {
     /// serve states
     #[serde(default)]
-    pub rpc_config: Option<JrpcConfig>,
+    pub rpc_config: Option<everscale_jrpc_server::Config>,
 
     /// Prometheus metrics exporter settings.
     /// Completely disable when not specified
@@ -178,13 +178,6 @@ pub struct S3ScannerConfig {
 
 fn default_retry_on_error() -> bool {
     true
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct JrpcConfig {
-    pub address: SocketAddr,
-    #[serde(default)]
-    pub storage: Option<everscale_jrpc_server::JrpcStorageOptions>,
 }
 
 #[allow(clippy::large_enum_variant)]

@@ -22,7 +22,7 @@ impl NetworkScanner {
         kafka_settings: Option<KafkaConfig>,
         node_settings: NodeConfig,
         global_config: ton_indexer::GlobalConfig,
-        jrpc_state: Arc<JrpcState>,
+        jrpc_state: Option<Arc<JrpcState>>,
     ) -> Result<Arc<Self>> {
         let requests_consumer_config = match &kafka_settings {
             Some(KafkaConfig::Gql(gql)) => gql.requests_consumer.clone(),
@@ -73,12 +73,12 @@ impl NetworkScanner {
 
 struct BlocksSubscriber {
     handler: BlocksHandler,
-    jrpc_state: Arc<JrpcState>,
+    jrpc_state: Option<Arc<JrpcState>>,
     extract_all: bool,
 }
 
 impl BlocksSubscriber {
-    fn new(config: Option<KafkaConfig>, jrpc_state: Arc<JrpcState>) -> Result<Arc<Self>> {
+    fn new(config: Option<KafkaConfig>, jrpc_state: Option<Arc<JrpcState>>) -> Result<Arc<Self>> {
         let extract_all = matches!(&config, Some(KafkaConfig::Gql(_)));
 
         Ok(Arc::new(Self {
@@ -97,9 +97,9 @@ impl BlocksSubscriber {
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
     ) -> Result<()> {
-        if let Some(shard_state) = shard_state {
-            self.jrpc_state
-                .handle_block(block_stuff, shard_state)
+        if let Some(jrpc_state) = &self.jrpc_state {
+            jrpc_state
+                .process_block(block_stuff, shard_state)
                 .context("Failed to update JRPC state")?;
         }
 
@@ -138,7 +138,9 @@ impl ton_indexer::Subscriber for BlocksSubscriber {
         &self,
         _: ton_indexer::ProcessBlocksEdgeContext<'_>,
     ) -> Result<()> {
-        self.jrpc_state.handle_block_edge();
+        if let Some(jrpc_state) = &self.jrpc_state {
+            jrpc_state.process_blocks_edge();
+        }
         Ok(())
     }
 }
