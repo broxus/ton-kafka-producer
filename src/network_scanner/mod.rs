@@ -131,6 +131,13 @@ impl ton_indexer::Subscriber for BlocksSubscriber {
     }
 
     async fn process_full_state(&self, state: &ShardStateStuff) -> Result<()> {
+        if let Some(jrpc_state) = &self.jrpc_state {
+            jrpc_state
+                .process_full_state(state)
+                .await
+                .context("Failed to update JRPC state")?;
+        }
+
         self.handler.handle_state(state).await
     }
 
