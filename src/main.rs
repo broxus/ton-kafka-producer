@@ -4,7 +4,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use argh::FromArgs;
 use broxus_util::alloc::profiling;
-use everscale_jrpc_server::{JrpcServer, JrpcState};
+use everscale_jrpc_server::JrpcState;
 use is_terminal::IsTerminal;
 use pomfrit::formatter::*;
 use tracing_subscriber::EnvFilter;
@@ -74,7 +74,12 @@ async fn run(app: App) -> Result<()> {
 
             tracing::info!("initializing producer");
 
-            let jrpc_state = Arc::new(JrpcState::new(false));
+            let jrpc_state = config
+                .rpc_config
+                .map(JrpcState::new)
+                .transpose()
+                .context("Failed to create JRPC state")?
+                .map(Arc::new);
 
             let engine = NetworkScanner::new(
                 config.kafka_settings,
@@ -104,7 +109,7 @@ async fn run(app: App) -> Result<()> {
                 let engine = engine.clone();
                 move |buf| {
                     buf.write(Metrics {
-                        jrpc_state: &jrpc_state,
+                        jrpc_state: jrpc_state.as_deref(),
                         engine: &engine,
                         panicked: &panicked,
                     });
@@ -115,11 +120,9 @@ async fn run(app: App) -> Result<()> {
             engine.start().await.context("Failed to start engine")?;
             tracing::info!("initialized engine");
 
-            if let Some(config) = config.rpc_config {
-                let jrpc = JrpcServer::with_state(jrpc_state)
-                    .build(engine.indexer(), config.address)
-                    .await?;
-                tokio::spawn(jrpc);
+            if let Some(jrpc_state) = jrpc_state {
+                jrpc_state.initialize(engine.indexer()).await?;
+                tokio::spawn(jrpc_state.serve()?);
                 tracing::info!("initialized RPC");
             }
 
@@ -203,7 +206,7 @@ struct App {
 }
 
 struct Metrics<'a> {
-    jrpc_state: &'a JrpcState,
+    jrpc_state: Option<&'a JrpcState>,
     engine: &'a NetworkScanner,
     panicked: &'a AtomicBool,
 }
@@ -322,10 +325,15 @@ impl std::fmt::Display for Metrics<'_> {
 
         // RPC
 
-        let jrpc = self.jrpc_state.metrics();
-        f.begin_metric("jrpc_total").value(jrpc.total)?;
-        f.begin_metric("jrpc_errors").value(jrpc.errors)?;
-        f.begin_metric("jrpc_not_found").value(jrpc.not_found)?;
+        f.begin_metric("jrpc_enabled")
+            .value(self.jrpc_state.is_some() as u8)?;
+
+        if let Some(jrpc) = &self.jrpc_state {
+            let jrpc = jrpc.metrics();
+            f.begin_metric("jrpc_total").value(jrpc.total)?;
+            f.begin_metric("jrpc_errors").value(jrpc.errors)?;
+            f.begin_metric("jrpc_not_found").value(jrpc.not_found)?;
+        }
 
         // jemalloc
 

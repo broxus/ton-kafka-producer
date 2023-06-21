@@ -69,7 +69,13 @@ determines how the producer retrieves data from the TON node.
 # Optional states endpoint (see docs below)
 rpc_config:
   # States RPC endpoint
-  address: "0.0.0.0:8081"
+  listen_address: "0.0.0.0:8081"
+  generate_stub_keyblock: true
+  # Minimal JRPC API:
+  type: simple
+  # Or full JRPC API:
+  # type: full
+  # persistent_db_path: "/var/db/jrpc-storage"
 
 metrics_settings:
   # Listen address of metrics. Used by the client to gather prometheus metrics.
