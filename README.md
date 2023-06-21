@@ -114,10 +114,20 @@ scan_type:
     # # Specific block from which to run the indexer
     # start_from: 12365000
 
-    # # Internal DB options
+    # Manual rocksdb memory options (will be computed from the
+    # available memory otherwise).
     # db_options:
-    #   # Allowed DB size in bytes. Default: one third of all machine RAM
-    #   max_memory_usage: 3000000000
+    #   rocksdb_lru_capacity: "512 MB"
+    #   cells_cache_size: "4 GB"
+
+    # Everscale specific network settings
+    adnl_options:
+      use_loopback_for_neighbours: true
+      force_use_priority_channels: true
+    rldp_options:
+      force_compression: true
+    overlay_shard_options:
+      force_compression: true
 
 kafka_settings:
   mode: broxus # it will try to write to 0..8 partition in topic, so, make sure that you have all set.

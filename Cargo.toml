@@ -63,6 +63,7 @@ cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] 
 [features]
 default = ["sasl"]
 sasl = ["rdkafka/sasl"]
+venom = ["ton_block/venom", "ton-indexer/venom"]
 
 [package.metadata.deb]
 depends = "libstdc++6[amd64]"
