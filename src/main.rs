@@ -249,6 +249,35 @@ impl std::fmt::Display for Metrics<'_> {
                 .value(last_shard_client_mc_block_seqno)?;
         }
 
+        f.begin_metric("ton_indexer_block_broadcasts_total").value(
+            indexer_metrics
+                .block_broadcasts
+                .total
+                .load(Ordering::Acquire),
+        )?;
+        f.begin_metric("ton_indexer_block_broadcasts_invalid")
+            .value(
+                indexer_metrics
+                    .block_broadcasts
+                    .invalid
+                    .load(Ordering::Acquire),
+            )?;
+
+        macro_rules! downloader_metrics {
+            ($f:ident, $metrics:ident.$name:ident) => {
+                $f.begin_metric(concat!("ton_indexer_", stringify!($name), "_total"))
+                    .value($metrics.$name.total.load(Ordering::Acquire))?;
+                $f.begin_metric(concat!("ton_indexer_", stringify!($name), "_errors"))
+                    .value($metrics.$name.errors.load(Ordering::Acquire))?;
+                $f.begin_metric(concat!("ton_indexer_", stringify!($name), "_timeouts"))
+                    .value($metrics.$name.timeouts.load(Ordering::Acquire))?;
+            };
+        }
+
+        downloader_metrics!(f, indexer_metrics.download_next_block_requests);
+        downloader_metrics!(f, indexer_metrics.download_block_requests);
+        downloader_metrics!(f, indexer_metrics.download_block_proof_requests);
+
         // Internal metrics
         let internal_metrics = indexer.internal_metrics();
 
