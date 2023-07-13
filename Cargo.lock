@@ -79,7 +79,7 @@ checksum = "bddcadddf5e9015d310179a59bb28c4d4b9920ad0f11e8e14dbadf654890c9a6"
 [[package]]
 name = "archive-downloader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#e995c7c93e0bceb13b991b6e0e3a6a83c06825db"
+source = "git+https://github.com/broxus/ton-indexer.git#9c607dfa6a5a955e635a8026a3013324b90fec0c"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -96,7 +96,7 @@ dependencies = [
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#e995c7c93e0bceb13b991b6e0e3a6a83c06825db"
+source = "git+https://github.com/broxus/ton-indexer.git#9c607dfa6a5a955e635a8026a3013324b90fec0c"
 dependencies = [
  "anyhow",
  "base64",
@@ -1095,7 +1095,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#e995c7c93e0bceb13b991b6e0e3a6a83c06825db"
+source = "git+https://github.com/broxus/ton-indexer.git#9c607dfa6a5a955e635a8026a3013324b90fec0c"
 dependencies = [
  "anyhow",
  "base64",
@@ -1565,6 +1565,16 @@ name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
+
+[[package]]
+name = "memmap"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6585fd95e7bb50d6cc31e20d4cf9afb4e2ba16c5846fc76793f11218da9c475b"
+dependencies = [
+ "libc",
+ "winapi",
+]
 
 [[package]]
 name = "mime"
@@ -2967,7 +2977,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.2.1"
-source = "git+https://github.com/broxus/ton-indexer.git#e995c7c93e0bceb13b991b6e0e3a6a83c06825db"
+source = "git+https://github.com/broxus/ton-indexer.git#9c607dfa6a5a955e635a8026a3013324b90fec0c"
 dependencies = [
  "ahash",
  "anyhow",
@@ -2988,6 +2998,7 @@ dependencies = [
  "hex",
  "humantime",
  "libc",
+ "memmap",
  "num-traits",
  "num_cpus",
  "once_cell",
