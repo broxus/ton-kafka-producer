@@ -74,3 +74,7 @@ maintainer-scripts = "contrib/"
 
 [package.metadata.deb.systemd-units]
 unit-scripts = "contrib/"
+
+[patch."https://github.com/broxus/ton-indexer.git"]
+ton-indexer = { git = "https://www.github.com/broxus/ton-indexer.git", branch = "persistent-state-support" }
+archive-downloader = { git = "https://www.github.com/broxus/ton-indexer.git", branch = "persistent-state-support" }
