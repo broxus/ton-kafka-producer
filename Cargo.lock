@@ -79,7 +79,7 @@ checksum = "bddcadddf5e9015d310179a59bb28c4d4b9920ad0f11e8e14dbadf654890c9a6"
 [[package]]
 name = "archive-downloader"
 version = "0.1.0"
-source = "git+https://www.github.com/broxus/ton-indexer.git?branch=persistent-state-support#7f173a76bc4aae1b6d375a8e9c0b93a5a85831bf"
+source = "git+https://www.github.com/broxus/ton-indexer.git?branch=persistent-state-support#8aac42d4e4b244d0fea9821eff1eac0bf0bc0ac5"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -96,7 +96,7 @@ dependencies = [
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://www.github.com/broxus/ton-indexer.git?branch=persistent-state-support#7f173a76bc4aae1b6d375a8e9c0b93a5a85831bf"
+source = "git+https://www.github.com/broxus/ton-indexer.git?branch=persistent-state-support#8aac42d4e4b244d0fea9821eff1eac0bf0bc0ac5"
 dependencies = [
  "anyhow",
  "base64",
@@ -1095,7 +1095,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://www.github.com/broxus/ton-indexer.git?branch=persistent-state-support#7f173a76bc4aae1b6d375a8e9c0b93a5a85831bf"
+source = "git+https://www.github.com/broxus/ton-indexer.git?branch=persistent-state-support#8aac42d4e4b244d0fea9821eff1eac0bf0bc0ac5"
 dependencies = [
  "anyhow",
  "base64",
@@ -2967,7 +2967,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.2.1"
-source = "git+https://www.github.com/broxus/ton-indexer.git?branch=persistent-state-support#7f173a76bc4aae1b6d375a8e9c0b93a5a85831bf"
+source = "git+https://www.github.com/broxus/ton-indexer.git?branch=persistent-state-support#8aac42d4e4b244d0fea9821eff1eac0bf0bc0ac5"
 dependencies = [
  "ahash",
  "anyhow",
