@@ -71,6 +71,9 @@ pub struct NodeConfig {
     //Prepare persistent state files
     pub prepare_persistent_states: bool,
 
+    //indicates how many persistent states can be generated simultaneously
+    pub persistent_state_parallelism: u8,
+
     /// Internal DB options.
     pub db_options: ton_indexer::DbOptions,
 
@@ -130,6 +133,7 @@ impl NodeConfig {
             shard_state_cache_options: None, // until state cache GC will be improved
             db_options: self.db_options,
             prepare_persistent_states: self.prepare_persistent_states,
+            persistent_state_parallelism: self.persistent_state_parallelism,
             archive_options: self.archive_options,
             sync_options: ton_indexer::SyncOptions {
                 old_blocks_policy,
@@ -153,6 +157,7 @@ impl Default for NodeConfig {
             db_path: "db".into(),
             temp_keys_path: "adnl-keys.json".into(),
             prepare_persistent_states: false,
+            persistent_state_parallelism: 1,
             db_options: Default::default(),
             parallel_archive_downloads: 16,
             archive_options: Some(Default::default()),
