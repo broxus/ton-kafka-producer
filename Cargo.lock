@@ -79,7 +79,7 @@ checksum = "bddcadddf5e9015d310179a59bb28c4d4b9920ad0f11e8e14dbadf654890c9a6"
 [[package]]
 name = "archive-downloader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9a62a18d0b84867da120535db5fac5023b8ec9fe"
+source = "git+https://github.com/broxus/ton-indexer.git#a2058bc5d5bdcc89d06a821b31fc0342d2d1eeab"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -96,7 +96,7 @@ dependencies = [
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9a62a18d0b84867da120535db5fac5023b8ec9fe"
+source = "git+https://github.com/broxus/ton-indexer.git#a2058bc5d5bdcc89d06a821b31fc0342d2d1eeab"
 dependencies = [
  "anyhow",
  "base64",
@@ -830,7 +830,7 @@ dependencies = [
 [[package]]
 name = "everscale-jrpc-models"
 version = "0.1.0"
-source = "git+https://github.com/broxus/everscale-jrpc.git#1dba2ec133ba9e41a60fec82e02cc90789b1aeab"
+source = "git+https://github.com/broxus/everscale-jrpc.git#ddbee5bea63dc5d7013a82f998042e99b2bfd1d1"
 dependencies = [
  "nekoton-abi",
  "nekoton-utils",
@@ -841,7 +841,7 @@ dependencies = [
 [[package]]
 name = "everscale-jrpc-server"
 version = "0.2.2"
-source = "git+https://github.com/broxus/everscale-jrpc.git#1dba2ec133ba9e41a60fec82e02cc90789b1aeab"
+source = "git+https://github.com/broxus/everscale-jrpc.git#ddbee5bea63dc5d7013a82f998042e99b2bfd1d1"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1096,7 +1096,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9a62a18d0b84867da120535db5fac5023b8ec9fe"
+source = "git+https://github.com/broxus/ton-indexer.git#a2058bc5d5bdcc89d06a821b31fc0342d2d1eeab"
 dependencies = [
  "anyhow",
  "base64",
@@ -2967,8 +2967,8 @@ dependencies = [
 
 [[package]]
 name = "ton-indexer"
-version = "0.2.1"
-source = "git+https://github.com/broxus/ton-indexer.git#9a62a18d0b84867da120535db5fac5023b8ec9fe"
+version = "0.3.0"
+source = "git+https://github.com/broxus/ton-indexer.git#a2058bc5d5bdcc89d06a821b31fc0342d2d1eeab"
 dependencies = [
  "ahash",
  "anyhow",

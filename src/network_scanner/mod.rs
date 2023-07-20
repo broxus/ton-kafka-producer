@@ -29,16 +29,13 @@ impl NetworkScanner {
             _ => None,
         };
 
-        let subscriber: Arc<dyn ton_indexer::Subscriber> =
-            BlocksSubscriber::new(kafka_settings, jrpc_state)?;
-
         let indexer = ton_indexer::Engine::new(
             node_settings
                 .build_indexer_config()
                 .await
                 .context("Failed to build node config")?,
             global_config,
-            vec![subscriber],
+            BlocksSubscriber::new(kafka_settings, jrpc_state)?,
         )
         .await
         .context("Failed to start node")?;
@@ -130,7 +127,9 @@ impl ton_indexer::Subscriber for BlocksSubscriber {
         .await
     }
 
-    async fn process_full_state(&self, state: &ShardStateStuff) -> Result<()> {
+    async fn process_full_state(&self, state: Arc<ShardStateStuff>) -> Result<()> {
+        self.handler.handle_state(&state).await?;
+
         if let Some(jrpc_state) = &self.jrpc_state {
             jrpc_state
                 .process_full_state(state)
@@ -138,7 +137,7 @@ impl ton_indexer::Subscriber for BlocksSubscriber {
                 .context("Failed to update JRPC state")?;
         }
 
-        self.handler.handle_state(state).await
+        Ok(())
     }
 
     async fn process_blocks_edge(
