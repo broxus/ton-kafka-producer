@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use bytes::Bytes;
-use everscale_jrpc_server::JrpcState;
+use everscale_rpc_server::ServerState;
 use ton_indexer::utils::*;
 use ton_indexer::ProcessBlockContext;
 
@@ -22,7 +22,7 @@ impl NetworkScanner {
         kafka_settings: Option<KafkaConfig>,
         node_settings: NodeConfig,
         global_config: ton_indexer::GlobalConfig,
-        jrpc_state: Option<Arc<JrpcState>>,
+        server_state: Option<Arc<ServerState>>,
     ) -> Result<Arc<Self>> {
         let requests_consumer_config = match &kafka_settings {
             Some(KafkaConfig::Gql(gql)) => gql.requests_consumer.clone(),
@@ -35,7 +35,7 @@ impl NetworkScanner {
                 .await
                 .context("Failed to build node config")?,
             global_config,
-            BlocksSubscriber::new(kafka_settings, jrpc_state)?,
+            BlocksSubscriber::new(kafka_settings, server_state)?,
         )
         .await
         .context("Failed to start node")?;
@@ -70,17 +70,20 @@ impl NetworkScanner {
 
 struct BlocksSubscriber {
     handler: BlocksHandler,
-    jrpc_state: Option<Arc<JrpcState>>,
+    server_state: Option<Arc<ServerState>>,
     extract_all: bool,
 }
 
 impl BlocksSubscriber {
-    fn new(config: Option<KafkaConfig>, jrpc_state: Option<Arc<JrpcState>>) -> Result<Arc<Self>> {
+    fn new(
+        config: Option<KafkaConfig>,
+        server_state: Option<Arc<ServerState>>,
+    ) -> Result<Arc<Self>> {
         let extract_all = matches!(&config, Some(KafkaConfig::Gql(_)));
 
         Ok(Arc::new(Self {
             handler: BlocksHandler::new(config)?,
-            jrpc_state,
+            server_state,
             extract_all,
         }))
     }
@@ -94,10 +97,10 @@ impl BlocksSubscriber {
         block_proof: Option<&BlockProofStuff>,
         shard_state: Option<&ShardStateStuff>,
     ) -> Result<()> {
-        if let Some(jrpc_state) = &self.jrpc_state {
-            jrpc_state
+        if let Some(server_state) = &self.server_state {
+            server_state
                 .process_block(block_stuff, shard_state)
-                .context("Failed to update JRPC state")?;
+                .context("Failed to update server state")?;
         }
 
         self.handler
@@ -130,11 +133,11 @@ impl ton_indexer::Subscriber for BlocksSubscriber {
     async fn process_full_state(&self, state: Arc<ShardStateStuff>) -> Result<()> {
         self.handler.handle_state(&state).await?;
 
-        if let Some(jrpc_state) = &self.jrpc_state {
-            jrpc_state
+        if let Some(server_state) = &self.server_state {
+            server_state
                 .process_full_state(state)
                 .await
-                .context("Failed to update JRPC state")?;
+                .context("Failed to update server state")?;
         }
 
         Ok(())
@@ -144,8 +147,8 @@ impl ton_indexer::Subscriber for BlocksSubscriber {
         &self,
         _: ton_indexer::ProcessBlocksEdgeContext<'_>,
     ) -> Result<()> {
-        if let Some(jrpc_state) = &self.jrpc_state {
-            jrpc_state.process_blocks_edge();
+        if let Some(server_state) = &self.server_state {
+            server_state.process_blocks_edge();
         }
         Ok(())
     }

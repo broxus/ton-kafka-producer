@@ -13,7 +13,7 @@ use ton_indexer::OldBlocksPolicy;
 pub struct AppConfig {
     /// serve states
     #[serde(default)]
-    pub rpc_config: Option<everscale_jrpc_server::Config>,
+    pub rpc_config: Option<everscale_rpc_server::Config>,
 
     /// Prometheus metrics exporter settings.
     /// Completely disable when not specified
