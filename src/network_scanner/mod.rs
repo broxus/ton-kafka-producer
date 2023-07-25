@@ -97,7 +97,7 @@ impl BlocksSubscriber {
         if let Some(rpc_state) = &self.rpc_state {
             rpc_state
                 .process_block(block_stuff, shard_state)
-                .context("Failed to update server state")?;
+                .context("Failed to update RPC state")?;
         }
 
         self.handler
@@ -134,7 +134,7 @@ impl ton_indexer::Subscriber for BlocksSubscriber {
             rpc_state
                 .process_full_state(state)
                 .await
-                .context("Failed to update server state")?;
+                .context("Failed to update RPC state")?;
         }
 
         Ok(())
