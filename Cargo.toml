@@ -24,7 +24,7 @@ chrono = "0.4.22"
 config = { version = "0.13", default-features = false, features = ["yaml"] }
 countme = { version = "3.0.0", features = ["enable"] }
 
-everscale-jrpc-server = { git = "https://github.com/broxus/everscale-jrpc.git", default-features = false }
+everscale-rpc-server = { git = "https://github.com/broxus/everscale-jrpc.git", default-features = false }
 everscale-network = "0.5"
 futures-util = "0.3"
 hex = "0.4"
