@@ -4,7 +4,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use argh::FromArgs;
 use broxus_util::alloc::profiling;
-use everscale_rpc_server::ServerState;
+use everscale_rpc_server::RpcState;
 use is_terminal::IsTerminal;
 use pomfrit::formatter::*;
 use tracing_subscriber::EnvFilter;
@@ -74,9 +74,9 @@ async fn run(app: App) -> Result<()> {
 
             tracing::info!("initializing producer");
 
-            let server_state = config
+            let rpc_state = config
                 .rpc_config
-                .map(ServerState::new)
+                .map(RpcState::new)
                 .transpose()
                 .context("Failed to create server state")?
                 .map(Arc::new);
@@ -85,7 +85,7 @@ async fn run(app: App) -> Result<()> {
                 config.kafka_settings,
                 node_config,
                 global_config,
-                server_state.clone(),
+                rpc_state.clone(),
             )
             .await
             .context("Failed to create engine")?;
@@ -105,11 +105,11 @@ async fn run(app: App) -> Result<()> {
                 pomfrit::create_exporter(config.metrics_settings).await?;
 
             metrics_writer.spawn({
-                let server_state = server_state.clone();
+                let rpc_state = rpc_state.clone();
                 let engine = engine.clone();
                 move |buf| {
                     buf.write(Metrics {
-                        server_state: server_state.as_deref(),
+                        rpc_state: rpc_state.as_deref(),
                         engine: &engine,
                         panicked: &panicked,
                     });
@@ -120,9 +120,9 @@ async fn run(app: App) -> Result<()> {
             engine.start().await.context("Failed to start engine")?;
             tracing::info!("initialized engine");
 
-            if let Some(server_state) = server_state {
-                server_state.initialize(engine.indexer()).await?;
-                tokio::spawn(server_state.serve()?);
+            if let Some(rpc_state) = rpc_state {
+                rpc_state.initialize(engine.indexer()).await?;
+                tokio::spawn(rpc_state.serve()?);
                 tracing::info!("initialized RPC");
             }
 
@@ -206,7 +206,7 @@ struct App {
 }
 
 struct Metrics<'a> {
-    server_state: Option<&'a ServerState>,
+    rpc_state: Option<&'a RpcState>,
     engine: &'a NetworkScanner,
     panicked: &'a AtomicBool,
 }
@@ -354,10 +354,10 @@ impl std::fmt::Display for Metrics<'_> {
 
         // RPC
 
-        f.begin_metric("rpc_enabled")
-            .value(self.server_state.is_some() as u8)?;
+        f.begin_metric("jrpc_enabled")
+            .value(self.rpc_state.is_some() as u8)?;
 
-        if let Some(state) = &self.server_state {
+        if let Some(state) = &self.rpc_state {
             let jrpc = state.jrpc_metrics();
             f.begin_metric("jrpc_total").value(jrpc.total)?;
             f.begin_metric("jrpc_errors").value(jrpc.errors)?;
