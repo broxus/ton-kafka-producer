@@ -877,7 +877,7 @@ checksum = "719e7eca52068b4712789379ef850e5c08b3316bccab5be12d1cb9fcb323a57c"
 [[package]]
 name = "everscale-rpc-models"
 version = "0.1.0"
-source = "git+https://github.com/broxus/everscale-jrpc.git#0747603b9173b02adec2d8cf016517b7f5c8bc13"
+source = "git+https://github.com/broxus/everscale-jrpc.git#315b18d0b46a583a0003d7cee3f197383fc29c2d"
 dependencies = [
  "everscale-rpc-proto",
  "nekoton-abi",
@@ -889,7 +889,7 @@ dependencies = [
 [[package]]
 name = "everscale-rpc-proto"
 version = "0.1.0"
-source = "git+https://github.com/broxus/everscale-jrpc.git#0747603b9173b02adec2d8cf016517b7f5c8bc13"
+source = "git+https://github.com/broxus/everscale-jrpc.git#315b18d0b46a583a0003d7cee3f197383fc29c2d"
 dependencies = [
  "prost",
  "prost-build",
@@ -898,7 +898,7 @@ dependencies = [
 [[package]]
 name = "everscale-rpc-server"
 version = "0.2.2"
-source = "git+https://github.com/broxus/everscale-jrpc.git#0747603b9173b02adec2d8cf016517b7f5c8bc13"
+source = "git+https://github.com/broxus/everscale-jrpc.git#315b18d0b46a583a0003d7cee3f197383fc29c2d"
 dependencies = [
  "anyhow",
  "arc-swap",
