@@ -68,6 +68,9 @@ pub struct NodeConfig {
     /// NOTE: generates new keys if specified path doesn't exist
     pub temp_keys_path: PathBuf,
 
+    /// Persistent state keeper configuration.
+    pub persistent_state_options: ton_indexer::PersistentStateOptions,
+
     /// Internal DB options.
     pub db_options: ton_indexer::DbOptions,
 
@@ -126,6 +129,7 @@ impl NodeConfig {
             }),
             shard_state_cache_options: None, // until state cache GC will be improved
             db_options: self.db_options,
+            persistent_state_options: self.persistent_state_options,
             archive_options: self.archive_options,
             sync_options: ton_indexer::SyncOptions {
                 old_blocks_policy,
@@ -148,6 +152,7 @@ impl Default for NodeConfig {
             adnl_port: 30303,
             db_path: "db".into(),
             temp_keys_path: "adnl-keys.json".into(),
+            persistent_state_options: Default::default(),
             db_options: Default::default(),
             parallel_archive_downloads: 16,
             archive_options: Some(Default::default()),

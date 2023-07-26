@@ -79,7 +79,7 @@ checksum = "bddcadddf5e9015d310179a59bb28c4d4b9920ad0f11e8e14dbadf654890c9a6"
 [[package]]
 name = "archive-downloader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#a2058bc5d5bdcc89d06a821b31fc0342d2d1eeab"
+source = "git+https://github.com/broxus/ton-indexer.git#736b164204f4bdc85f4c926bb894ac0930e97962"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -96,7 +96,7 @@ dependencies = [
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#a2058bc5d5bdcc89d06a821b31fc0342d2d1eeab"
+source = "git+https://github.com/broxus/ton-indexer.git#736b164204f4bdc85f4c926bb894ac0930e97962"
 dependencies = [
  "anyhow",
  "base64",
@@ -1117,7 +1117,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#a2058bc5d5bdcc89d06a821b31fc0342d2d1eeab"
+source = "git+https://github.com/broxus/ton-indexer.git#736b164204f4bdc85f4c926bb894ac0930e97962"
 dependencies = [
  "anyhow",
  "base64",
@@ -1488,9 +1488,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.10"
+version = "1.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24e6ab01971eb092ffe6a7d42f49f9ff42662f17604681e2843ad65077ba47dc"
+checksum = "d97137b25e321a73eef1418d1d5d2eda4d77e12813f8e6dead84bc52c5870a7b"
 dependencies = [
  "cc",
  "libc",
@@ -3046,7 +3046,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.3.0"
-source = "git+https://github.com/broxus/ton-indexer.git#a2058bc5d5bdcc89d06a821b31fc0342d2d1eeab"
+source = "git+https://github.com/broxus/ton-indexer.git#736b164204f4bdc85f4c926bb894ac0930e97962"
 dependencies = [
  "ahash",
  "anyhow",
