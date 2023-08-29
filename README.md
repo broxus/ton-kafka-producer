@@ -78,6 +78,12 @@ rpc_config:
   # persistent_db_path: "/var/db/jrpc-storage"
   # # Virtual shards depth to use during shard state accounts processing
   # shard_split_depth: 4
+  # # Specify options to enable the transactions GC (disabled by default)
+  # transactions_gc_options:
+  #   # For at least how long to store transactions (in seconds)
+  #   ttl_sec: 1209600
+  #   # GC invocation interval (in seconds)
+  #   interval_sec: 3600
 
 metrics_settings:
   # Listen address of metrics. Used by the client to gather prometheus metrics.
