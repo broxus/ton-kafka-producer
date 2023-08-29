@@ -887,7 +887,7 @@ checksum = "719e7eca52068b4712789379ef850e5c08b3316bccab5be12d1cb9fcb323a57c"
 [[package]]
 name = "everscale-rpc-models"
 version = "0.1.0"
-source = "git+https://github.com/broxus/everscale-jrpc.git#e528a6855eca20ed79269b3b8f133bd65b2499e2"
+source = "git+https://github.com/broxus/everscale-jrpc.git#f2c2c14a68436d803a967ed0bd1a9f0d3a2f921a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -905,7 +905,7 @@ dependencies = [
 [[package]]
 name = "everscale-rpc-server"
 version = "0.2.3"
-source = "git+https://github.com/broxus/everscale-jrpc.git#e528a6855eca20ed79269b3b8f133bd65b2499e2"
+source = "git+https://github.com/broxus/everscale-jrpc.git#f2c2c14a68436d803a967ed0bd1a9f0d3a2f921a"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -3058,7 +3058,7 @@ dependencies = [
 
 [[package]]
 name = "ton-kafka-producer"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "anyhow",
  "archive-downloader",
@@ -3160,7 +3160,7 @@ dependencies = [
 [[package]]
 name = "ton_executor"
 version = "1.15.54"
-source = "git+https://github.com/broxus/ton-labs-executor#01f7a017c25fed1413863c2dac570553fa000bdd"
+source = "git+https://github.com/broxus/ton-labs-executor#2a38890d53f9c3dad84b3fb9a58e3bb62ba20f44"
 dependencies = [
  "anyhow",
  "log",
