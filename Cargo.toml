@@ -1,8 +1,8 @@
 [package]
 name = "ton-kafka-producer"
-version = "0.2.11"
+version = "0.2.12"
 edition = "2021"
-rust-version = "1.68.2"
+rust-version = "1.71.1"
 license-file = "LICENSE"
 authors = ["Broxus team"]
 
@@ -10,7 +10,6 @@ authors = ["Broxus team"]
 anyhow = "1.0"
 argh = "0.1"
 async-trait = "0.1"
-base64 = "0.13"
 broxus-util = { version = "0.2", features = [
     "argh",
     "alloc",
@@ -18,6 +17,7 @@ broxus-util = { version = "0.2", features = [
     "public-ip",
     "signal",
     "config",
+    "metrics"
 ], default-features = false }
 bytes = "1.2.1"
 chrono = "0.4.22"
@@ -29,15 +29,12 @@ everscale-network = "0.5"
 futures-util = "0.3"
 hex = "0.4"
 indicatif = "0.17"
-is-terminal = "0.4"
 once_cell = "1.14"
-pomfrit = "0.1"
 rand = "0.8"
-rdkafka = { version = "0.33.2", features = ["ssl-vendored", "tokio"] }
+rdkafka = { version = "0.36.2", features = ["ssl-vendored", "tokio"] }
 rustc-hash = "1.1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.9"
 thiserror = "1.0"
 tokio = { version = "1", features = ["full", "parking_lot"] }
 
@@ -56,6 +53,7 @@ archive-downloader = { git = "https://github.com/broxus/ton-indexer.git" }
 tracing = "0.1.34"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 bytesize = "1.2.0"
+metrics-exporter-prometheus = "0.13.0"
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }

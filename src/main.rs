@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -5,8 +6,7 @@ use anyhow::{Context, Result};
 use argh::FromArgs;
 use broxus_util::alloc::profiling;
 use everscale_rpc_server::RpcState;
-use is_terminal::IsTerminal;
-use pomfrit::formatter::*;
+use std::io::IsTerminal;
 use tracing_subscriber::EnvFilter;
 
 use ton_kafka_producer::archives_scanner::*;
@@ -100,21 +100,11 @@ async fn run(app: App) -> Result<()> {
 
                 return Ok(());
             }
+            if let Some(s) = config.metrics_settings {
+                install_monitoring(s.listen_address).context("Failed to install monitoring")?;
+                tokio::spawn(profiling::allocator_metrics_loop());
+            }
 
-            let (_exporter, metrics_writer) =
-                pomfrit::create_exporter(config.metrics_settings).await?;
-
-            metrics_writer.spawn({
-                let rpc_state = rpc_state.clone();
-                let engine = engine.clone();
-                move |buf| {
-                    buf.write(Metrics {
-                        rpc_state: rpc_state.as_deref(),
-                        engine: &engine,
-                        panicked: &panicked,
-                    });
-                }
-            });
             tracing::info!("initialized exporter");
 
             engine.start().await.context("Failed to start engine")?;
@@ -185,6 +175,19 @@ fn print_disk_usage_stats(engine: &Arc<NetworkScanner>) {
     );
 }
 
+fn install_monitoring(metrics_addr: SocketAddr) -> Result<()> {
+    use metrics_exporter_prometheus::Matcher;
+    const EXPONENTIAL_SECONDS: &[f64] = &[
+        0.000001, 0.0001, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+        60.0, 120.0, 300.0, 600.0, 3600.0,
+    ];
+    metrics_exporter_prometheus::PrometheusBuilder::new()
+        .set_buckets_for_metric(Matcher::Prefix("time".to_string()), EXPONENTIAL_SECONDS)?
+        .with_http_listener(metrics_addr)
+        .install()
+        .context("Failed installing metrics exporter")
+}
+
 #[derive(Debug, FromArgs)]
 #[argh(description = "A simple service to stream TON data into Kafka")]
 struct App {
@@ -203,242 +206,6 @@ struct App {
     /// print memory usage statistics and exit
     #[argh(switch)]
     print_memory_usage: bool,
-}
-
-struct Metrics<'a> {
-    rpc_state: Option<&'a RpcState>,
-    engine: &'a NetworkScanner,
-    panicked: &'a AtomicBool,
-}
-
-impl std::fmt::Display for Metrics<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let panicked = self.panicked.load(Ordering::Acquire) as u8;
-        f.begin_metric("panicked").value(panicked)?;
-
-        let indexer = self.engine.indexer();
-
-        // TON indexer
-        let indexer_metrics = indexer.metrics();
-
-        let last_mc_utime = indexer_metrics.last_mc_utime.load(Ordering::Acquire);
-        if last_mc_utime > 0 {
-            f.begin_metric("ton_indexer_mc_time_diff")
-                .value(indexer_metrics.mc_time_diff.load(Ordering::Acquire))?;
-            f.begin_metric("ton_indexer_sc_time_diff").value(
-                indexer_metrics
-                    .shard_client_time_diff
-                    .load(Ordering::Acquire),
-            )?;
-
-            f.begin_metric("ton_indexer_last_mc_utime")
-                .value(last_mc_utime)?;
-        }
-
-        let last_mc_block_seqno = indexer_metrics.last_mc_block_seqno.load(Ordering::Acquire);
-        if last_mc_block_seqno > 0 {
-            f.begin_metric("ton_indexer_last_mc_block_seqno")
-                .value(last_mc_block_seqno)?;
-        }
-
-        let last_shard_client_mc_block_seqno = indexer_metrics
-            .last_shard_client_mc_block_seqno
-            .load(Ordering::Acquire);
-        if last_shard_client_mc_block_seqno > 0 {
-            f.begin_metric("ton_indexer_last_sc_block_seqno")
-                .value(last_shard_client_mc_block_seqno)?;
-        }
-
-        f.begin_metric("ton_indexer_block_broadcasts_total").value(
-            indexer_metrics
-                .block_broadcasts
-                .total
-                .load(Ordering::Acquire),
-        )?;
-        f.begin_metric("ton_indexer_block_broadcasts_invalid")
-            .value(
-                indexer_metrics
-                    .block_broadcasts
-                    .invalid
-                    .load(Ordering::Acquire),
-            )?;
-
-        macro_rules! downloader_metrics {
-            ($f:ident, $metrics:ident.$name:ident) => {
-                $f.begin_metric(concat!("ton_indexer_", stringify!($name), "_total"))
-                    .value($metrics.$name.total.load(Ordering::Acquire))?;
-                $f.begin_metric(concat!("ton_indexer_", stringify!($name), "_errors"))
-                    .value($metrics.$name.errors.load(Ordering::Acquire))?;
-                $f.begin_metric(concat!("ton_indexer_", stringify!($name), "_timeouts"))
-                    .value($metrics.$name.timeouts.load(Ordering::Acquire))?;
-            };
-        }
-
-        downloader_metrics!(f, indexer_metrics.download_next_block_requests);
-        downloader_metrics!(f, indexer_metrics.download_block_requests);
-        downloader_metrics!(f, indexer_metrics.download_block_proof_requests);
-
-        // Internal metrics
-        let internal_metrics = indexer.internal_metrics();
-
-        f.begin_metric("ton_indexer_shard_states_operations_len")
-            .value(internal_metrics.shard_states_operations_len)?;
-        f.begin_metric("ton_indexer_block_applying_operations_len")
-            .value(internal_metrics.block_applying_operations_len)?;
-        f.begin_metric("ton_indexer_next_block_applying_operations_len")
-            .value(internal_metrics.next_block_applying_operations_len)?;
-        f.begin_metric("ton_indexer_download_block_operations")
-            .value(internal_metrics.download_block_operations_len)?;
-
-        // TON indexer network
-        let network_metrics = indexer.network_metrics();
-
-        f.begin_metric("network_adnl_peer_count")
-            .value(network_metrics.adnl.peer_count)?;
-        f.begin_metric("network_adnl_channels_by_id_len")
-            .value(network_metrics.adnl.channels_by_peers_len)?;
-        f.begin_metric("network_adnl_channels_by_peers_len")
-            .value(network_metrics.adnl.channels_by_peers_len)?;
-        f.begin_metric("network_adnl_incoming_transfers_len")
-            .value(network_metrics.adnl.incoming_transfers_len)?;
-        f.begin_metric("network_adnl_query_count")
-            .value(network_metrics.adnl.query_count)?;
-
-        f.begin_metric("network_dht_peers_cache_len")
-            .value(network_metrics.dht.known_peers_len)?;
-        f.begin_metric("network_dht_bucket_peer_count")
-            .value(network_metrics.dht.bucket_peer_count)?;
-        f.begin_metric("network_dht_storage_len")
-            .value(network_metrics.dht.storage_len)?;
-        f.begin_metric("network_dht_storage_total_size")
-            .value(network_metrics.dht.storage_total_size)?;
-
-        f.begin_metric("network_rldp_peer_count")
-            .value(network_metrics.rldp.peer_count)?;
-        f.begin_metric("network_rldp_transfers_cache_len")
-            .value(network_metrics.rldp.transfers_cache_len)?;
-
-        const OVERLAY_ID: &str = "overlay_id";
-
-        for (overlay_id, neighbour_metrics) in indexer.network_neighbour_metrics() {
-            f.begin_metric("overlay_peer_search_task_count")
-                .label(OVERLAY_ID, overlay_id)
-                .value(neighbour_metrics.peer_search_task_count)?;
-        }
-
-        for (overlay_id, overlay_metrics) in indexer.network_overlay_metrics() {
-            let overlay_id = base64::encode(overlay_id.as_slice());
-
-            f.begin_metric("overlay_owned_broadcasts_len")
-                .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.owned_broadcasts_len)?;
-            f.begin_metric("overlay_finished_broadcasts_len")
-                .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.finished_broadcasts_len)?;
-            f.begin_metric("overlay_node_count")
-                .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.node_count)?;
-            f.begin_metric("overlay_known_peers_len")
-                .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.known_peers)?;
-            f.begin_metric("overlay_neighbours")
-                .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.neighbours)?;
-            f.begin_metric("overlay_received_broadcasts_data_len")
-                .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.received_broadcasts_data_len)?;
-            f.begin_metric("overlay_received_broadcasts_barrier_count")
-                .label(OVERLAY_ID, &overlay_id)
-                .value(overlay_metrics.received_broadcasts_barrier_count)?;
-        }
-
-        // RPC
-
-        f.begin_metric("jrpc_enabled")
-            .value(self.rpc_state.is_some() as u8)?;
-
-        if let Some(state) = &self.rpc_state {
-            let jrpc = state.jrpc_metrics();
-            f.begin_metric("jrpc_total").value(jrpc.total)?;
-            f.begin_metric("jrpc_errors").value(jrpc.errors)?;
-            f.begin_metric("jrpc_not_found").value(jrpc.not_found)?;
-
-            let proto = state.proto_metrics();
-            f.begin_metric("proto_total").value(proto.total)?;
-            f.begin_metric("proto_errors").value(proto.errors)?;
-            f.begin_metric("proto_not_found").value(proto.not_found)?;
-        }
-
-        // jemalloc
-
-        let profiling::JemallocStats {
-            allocated,
-            active,
-            metadata,
-            resident,
-            mapped,
-            retained,
-            dirty,
-            fragmentation,
-        } = profiling::fetch_stats().map_err(|e| {
-            tracing::error!("failed to fetch allocator stats: {e:?}");
-            std::fmt::Error
-        })?;
-
-        f.begin_metric("jemalloc_allocated_bytes")
-            .value(allocated)?;
-        f.begin_metric("jemalloc_active_bytes").value(active)?;
-        f.begin_metric("jemalloc_metadata_bytes").value(metadata)?;
-        f.begin_metric("jemalloc_resident_bytes").value(resident)?;
-        f.begin_metric("jemalloc_mapped_bytes").value(mapped)?;
-        f.begin_metric("jemalloc_retained_bytes").value(retained)?;
-        f.begin_metric("jemalloc_dirty_bytes").value(dirty)?;
-        f.begin_metric("jemalloc_fragmentation_bytes")
-            .value(fragmentation)?;
-
-        // DB
-        let db = indexer.get_db_metrics();
-        f.begin_metric("db_shard_state_storage_max_new_mc_cell_count")
-            .value(db.shard_state_storage.max_new_mc_cell_count)?;
-        f.begin_metric("db_shard_state_storage_max_new_sc_cell_count")
-            .value(db.shard_state_storage.max_new_sc_cell_count)?;
-
-        // RocksDB
-
-        let ton_indexer::RocksdbStats {
-            whole_db_stats,
-            block_cache_usage,
-            block_cache_pined_usage,
-        } = indexer.get_memory_usage_stats().map_err(|e| {
-            tracing::error!("failed to fetch rocksdb stats: {e:?}");
-            std::fmt::Error
-        })?;
-
-        f.begin_metric("rocksdb_block_cache_usage_bytes")
-            .value(block_cache_usage)?;
-        f.begin_metric("rocksdb_block_cache_pined_usage_bytes")
-            .value(block_cache_pined_usage)?;
-        f.begin_metric("rocksdb_memtable_total_size_bytes")
-            .value(whole_db_stats.mem_table_total)?;
-        f.begin_metric("rocksdb_memtable_unflushed_size_bytes")
-            .value(whole_db_stats.mem_table_unflushed)?;
-        f.begin_metric("rocksdb_memtable_cache_bytes")
-            .value(whole_db_stats.cache_total)?;
-
-        let cells_cache_stats = internal_metrics.cells_cache_stats;
-        f.begin_metric("cells_cache_hits")
-            .value(cells_cache_stats.hits)?;
-        f.begin_metric("cells_cache_requests")
-            .value(cells_cache_stats.requests)?;
-        f.begin_metric("cells_cache_occupied")
-            .value(cells_cache_stats.occupied)?;
-        f.begin_metric("cells_cache_hits_ratio")
-            .value(cells_cache_stats.hits_ratio)?;
-        f.begin_metric("cells_cache_size_bytes")
-            .value(cells_cache_stats.size_bytes)?;
-
-        Ok(())
-    }
 }
 
 async fn memory_profiler() {

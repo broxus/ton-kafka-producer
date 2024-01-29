@@ -1,10 +1,10 @@
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use everscale_network::{adnl, dht, overlay, rldp};
 use rand::Rng;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use ton_indexer::OldBlocksPolicy;
 
 /// Main application config (full)
@@ -18,7 +18,7 @@ pub struct AppConfig {
     /// Prometheus metrics exporter settings.
     /// Completely disable when not specified
     #[serde(default)]
-    pub metrics_settings: Option<pomfrit::Config>,
+    pub metrics_settings: Option<MetricsConfig>,
 
     /// Scan type
     pub scan_type: ScanType,
@@ -47,6 +47,22 @@ impl Default for ScanType {
     fn default() -> Self {
         Self::FromNetwork {
             node_config: Default::default(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(default)]
+pub struct MetricsConfig {
+    /// Listen address of metrics. Used by the client to gather prometheus metrics.
+    /// Default: `127.0.0.1:10000`
+    pub listen_address: SocketAddr,
+}
+
+impl Default for MetricsConfig {
+    fn default() -> Self {
+        Self {
+            listen_address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 10000),
         }
     }
 }
@@ -157,8 +173,8 @@ impl Default for NodeConfig {
             parallel_archive_downloads: 16,
             archive_options: Some(Default::default()),
             state_gc_options: Some(ton_indexer::StateGcOptions {
-                offset_sec: rand::thread_rng().gen_range(0..3600),
-                interval_sec: 3600,
+                offset_sec: rand::thread_rng().gen_range(0..60),
+                interval_sec: 60,
             }),
             start_from: None,
             adnl_options: Default::default(),
