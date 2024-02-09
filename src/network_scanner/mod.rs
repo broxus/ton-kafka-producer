@@ -97,6 +97,7 @@ impl BlocksSubscriber {
         if let Some(rpc_state) = &self.rpc_state {
             rpc_state
                 .process_block(block_stuff, shard_state)
+                .await
                 .context("Failed to update RPC state")?;
         }
 
