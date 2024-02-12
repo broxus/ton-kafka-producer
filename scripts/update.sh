@@ -13,10 +13,12 @@ function print_help() {
   echo "  -h,--help         Print this help message and exit"
   echo "  -f,--force        Clear \"/var/db/${SERVICE_NAME}\" on update"
   echo "  -s,--sync         Restart \"timesyncd\" service"
+  echo "  -r,--reload-cfg   Remove current network config and download a new one"
 }
 
 force="false"
 restart_timesyncd="false"
+reload_config="false"
 while [[ $# -gt 0 ]]; do
   key="$1"
   case $key in
@@ -30,6 +32,10 @@ while [[ $# -gt 0 ]]; do
       ;;
       -s|--sync)
         restart_timesyncd="true"
+        shift # past argument
+      ;;
+      -r|--reload-cfg)
+        reload_config="true"
         shift # past argument
       ;;
       *) # unknown option
@@ -59,8 +65,11 @@ RUSTFLAGS="-C target_cpu=native" cargo build --release
 sudo cp "$REPO_DIR/target/release/${SERVICE_NAME}" "/usr/local/bin/${SERVICE_NAME}"
 
 
-sudo wget -O "/etc/${SERVICE_NAME}/ton-global.config.json" \
-  https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/ton-global.config.json
+if [[ "$reload_config" == "true" ]]; then
+  echo "INFO: reload network configuration"
+  sudo wget -O "/etc/${SERVICE_NAME}/ton-global.config.json" \
+    https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/ton-global.config.json
+fi
 
 echo "INFO: preparing environment"
 sudo mkdir -p "/var/db/${SERVICE_NAME}"
