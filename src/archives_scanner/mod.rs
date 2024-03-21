@@ -100,6 +100,7 @@ async fn start_writing_blocks(
 
         if let Err(e) = handler
             .handle_block(
+                ton_indexer::BriefBlockMeta::default(), // TODO: Replace this stub
                 &stuff,
                 Some(data),
                 parsed.block_proof_stuff.as_ref(),

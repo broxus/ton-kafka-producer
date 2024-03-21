@@ -89,6 +89,7 @@ impl BlocksSubscriber {
 impl BlocksSubscriber {
     async fn handle_block(
         &self,
+        meta: ton_indexer::BriefBlockMeta,
         block_stuff: &BlockStuff,
         block_data: Option<Bytes>,
         block_proof: Option<&BlockProofStuff>,
@@ -102,7 +103,14 @@ impl BlocksSubscriber {
         }
 
         self.handler
-            .handle_block(block_stuff, block_data, block_proof, shard_state, true)
+            .handle_block(
+                meta,
+                block_stuff,
+                block_data,
+                block_proof,
+                shard_state,
+                true,
+            )
             .await
             .context("Failed to handle block")
     }
@@ -120,6 +128,7 @@ impl ton_indexer::Subscriber for BlocksSubscriber {
         };
 
         self.handle_block(
+            ctx.meta(),
             ctx.block_stuff(),
             block_data.map(Bytes::from),
             block_proof.as_ref(),

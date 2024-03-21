@@ -48,6 +48,7 @@ impl S3Scanner {
                     match self
                         .handler
                         .handle_block(
+                            ton_indexer::BriefBlockMeta::default(), // TODO: Replace this stub
                             &stuff,
                             Some(data.clone()),
                             parsed.block_proof_stuff.as_ref(),

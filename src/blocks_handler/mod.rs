@@ -36,6 +36,7 @@ impl BlocksHandler {
 
     pub async fn handle_block(
         &self,
+        block_meta: ton_indexer::BriefBlockMeta,
         block_stuff: &BlockStuff,
         block_data: Option<Bytes>,
         block_proof: Option<&BlockProofStuff>,
@@ -50,7 +51,13 @@ impl BlocksHandler {
             }
             Self::Gql(producer) => {
                 producer
-                    .handle_block(block_stuff, block_data, block_proof, shard_state)
+                    .handle_block(
+                        block_meta,
+                        block_stuff,
+                        block_data,
+                        block_proof,
+                        shard_state,
+                    )
                     .await
             }
             Self::None => Ok(()),
