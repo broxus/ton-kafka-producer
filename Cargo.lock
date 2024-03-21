@@ -80,7 +80,7 @@ checksum = "7b3d0060af21e8d11a926981cc00c6c1541aa91dd64b9f881985c3da1094425f"
 [[package]]
 name = "archive-downloader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9bbb5c0509d1a7e92464d65b75b64f80dd116165"
+source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -97,7 +97,7 @@ dependencies = [
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9bbb5c0509d1a7e92464d65b75b64f80dd116165"
+source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -1138,7 +1138,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9bbb5c0509d1a7e92464d65b75b64f80dd116165"
+source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -1490,9 +1490,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.15"
+version = "1.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "037731f5d3aaa87a5675e895b63ddff1a87624bc29f77004ea829809654e48f6"
+checksum = "5e143b5e666b2695d28f6bca6497720813f699c9602dd7f5cac91008b8ada7f9"
 dependencies = [
  "cc",
  "libc",
@@ -2774,12 +2774,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stable_deref_trait"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
 name = "strsim"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3081,7 +3075,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.3.2"
-source = "git+https://github.com/broxus/ton-indexer.git#9bbb5c0509d1a7e92464d65b75b64f80dd116165"
+source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
 dependencies = [
  "ahash",
  "anyhow",
@@ -3122,7 +3116,6 @@ dependencies = [
  "ton_block",
  "ton_types",
  "tracing",
- "triomphe",
  "weedb",
 ]
 
@@ -3399,16 +3392,6 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
-]
-
-[[package]]
-name = "triomphe"
-version = "0.1.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "859eb650cfee7434994602c3a68b25d77ad9e68c8a6cd491616ef86661382eb3"
-dependencies = [
- "serde",
- "stable_deref_trait",
 ]
 
 [[package]]
