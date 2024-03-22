@@ -80,7 +80,7 @@ checksum = "bddcadddf5e9015d310179a59bb28c4d4b9920ad0f11e8e14dbadf654890c9a6"
 [[package]]
 name = "archive-downloader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9bbb5c0509d1a7e92464d65b75b64f80dd116165"
+source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -97,7 +97,7 @@ dependencies = [
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9bbb5c0509d1a7e92464d65b75b64f80dd116165"
+source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -1138,7 +1138,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#9bbb5c0509d1a7e92464d65b75b64f80dd116165"
+source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -1268,7 +1268,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.5.5",
+ "socket2 0.4.10",
  "tokio",
  "tower-service",
  "tracing",
@@ -1649,9 +1649,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.8.10"
+version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f3d0b296e374a4e6f3c7b0a1f5a51d748a0d34c85e7dc48fc3fa9a87657fe09"
+checksum = "a4a650543ca06a924e8b371db273b2756685faae30f8487da1b56505a8f78b0c"
 dependencies = [
  "libc",
  "wasi",
@@ -2774,12 +2774,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stable_deref_trait"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
 name = "strsim"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3081,7 +3075,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.3.2"
-source = "git+https://github.com/broxus/ton-indexer.git#9bbb5c0509d1a7e92464d65b75b64f80dd116165"
+source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
 dependencies = [
  "ahash",
  "anyhow",
@@ -3122,13 +3116,12 @@ dependencies = [
  "ton_block",
  "ton_types",
  "tracing",
- "triomphe",
  "weedb",
 ]
 
 [[package]]
 name = "ton-kafka-producer"
-version = "0.2.13"
+version = "0.2.14"
 dependencies = [
  "anyhow",
  "archive-downloader",
@@ -3399,16 +3392,6 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
-]
-
-[[package]]
-name = "triomphe"
-version = "0.1.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "859eb650cfee7434994602c3a68b25d77ad9e68c8a6cd491616ef86661382eb3"
-dependencies = [
- "serde",
- "stable_deref_trait",
 ]
 
 [[package]]
