@@ -2,6 +2,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use everscale_network::overlay::OverlayOptions;
 use everscale_network::{adnl, dht, overlay, rldp};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -184,7 +185,10 @@ impl Default for NodeConfig {
             rldp_options: Default::default(),
             dht_options: Default::default(),
             neighbours_options: Default::default(),
-            overlay_shard_options: Default::default(),
+            overlay_shard_options: OverlayOptions {
+                broadcast_target_count: 25,
+                ..Default::default()
+            },
         }
     }
 }
