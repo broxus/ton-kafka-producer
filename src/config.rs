@@ -100,6 +100,7 @@ pub struct NodeConfig {
     pub state_gc_options: Option<ton_indexer::StateGcOptions>,
 
     pub start_from: Option<u32>,
+    pub max_block_applier_depth: u32,
 
     #[serde(default)]
     pub adnl_options: adnl::NodeOptions,
@@ -150,6 +151,7 @@ impl NodeConfig {
             sync_options: ton_indexer::SyncOptions {
                 old_blocks_policy,
                 parallel_archive_downloads: self.parallel_archive_downloads,
+                max_block_applier_depth: self.max_block_applier_depth,
                 ..Default::default()
             },
             adnl_options: self.adnl_options,
@@ -177,6 +179,7 @@ impl Default for NodeConfig {
                 interval_sec: 60,
             }),
             start_from: None,
+            max_block_applier_depth: 64,
             adnl_options: Default::default(),
             rldp_options: Default::default(),
             dht_options: Default::default(),
