@@ -80,7 +80,7 @@ checksum = "7b3d0060af21e8d11a926981cc00c6c1541aa91dd64b9f881985c3da1094425f"
 [[package]]
 name = "archive-downloader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
+source = "git+https://github.com/broxus/ton-indexer.git#7b9cf7f31466e442e2c651867b0863e4bfc579fd"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -97,7 +97,7 @@ dependencies = [
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
+source = "git+https://github.com/broxus/ton-indexer.git#7b9cf7f31466e442e2c651867b0863e4bfc579fd"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -1138,7 +1138,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
+source = "git+https://github.com/broxus/ton-indexer.git#7b9cf7f31466e442e2c651867b0863e4bfc579fd"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -3075,7 +3075,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.3.2"
-source = "git+https://github.com/broxus/ton-indexer.git#d6578d5b1033be0402934f2c65373c4e7fd54896"
+source = "git+https://github.com/broxus/ton-indexer.git#7b9cf7f31466e442e2c651867b0863e4bfc579fd"
 dependencies = [
  "ahash",
  "anyhow",
