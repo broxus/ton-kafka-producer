@@ -246,9 +246,7 @@ impl KafkaProducer {
                         delivery_future,
                     }
                 }
-                Err((e, sent_record))
-                    if e == KafkaError::MessageProduction(RDKafkaErrorCode::QueueFull) =>
-                {
+                Err((KafkaError::MessageProduction(RDKafkaErrorCode::QueueFull), sent_record)) => {
                     record = sent_record;
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 }
