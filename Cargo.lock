@@ -3118,7 +3118,7 @@ dependencies = [
 
 [[package]]
 name = "ton-kafka-producer"
-version = "0.2.14"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "archive-downloader",
