@@ -97,7 +97,7 @@ dependencies = [
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#0124a65a6e31f0206408a2294c007df3ba8f912d"
+source = "git+https://github.com/broxus/ton-indexer.git#72f9e6335a0b51d7675206867eaf835cf25f3854"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -903,7 +903,7 @@ checksum = "719e7eca52068b4712789379ef850e5c08b3316bccab5be12d1cb9fcb323a57c"
 [[package]]
 name = "everscale-rpc-models"
 version = "0.1.0"
-source = "git+https://github.com/broxus/everscale-jrpc.git#ca38865778ed4cce230b0d7a292e9fe45d1f68ae"
+source = "git+https://github.com/broxus/everscale-jrpc.git#6d31565ebf6b80f492a2699a3c24a5d3f45b834b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -921,7 +921,7 @@ dependencies = [
 [[package]]
 name = "everscale-rpc-server"
 version = "0.4.0"
-source = "git+https://github.com/broxus/everscale-jrpc.git#ca38865778ed4cce230b0d7a292e9fe45d1f68ae"
+source = "git+https://github.com/broxus/everscale-jrpc.git#6d31565ebf6b80f492a2699a3c24a5d3f45b834b"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1139,7 +1139,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#0124a65a6e31f0206408a2294c007df3ba8f912d"
+source = "git+https://github.com/broxus/ton-indexer.git#72f9e6335a0b51d7675206867eaf835cf25f3854"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -1688,7 +1688,7 @@ dependencies = [
 [[package]]
 name = "nekoton-abi"
 version = "0.13.0"
-source = "git+https://github.com/broxus/nekoton.git#9b4d401c686db225fc7bce94869bd85d072934cd"
+source = "git+https://github.com/broxus/nekoton.git#511d3112fddc355c3c53a31a21af86f258384a08"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -1714,7 +1714,7 @@ dependencies = [
 [[package]]
 name = "nekoton-proto"
 version = "0.1.0"
-source = "git+https://github.com/broxus/nekoton.git#9b4d401c686db225fc7bce94869bd85d072934cd"
+source = "git+https://github.com/broxus/nekoton.git#511d3112fddc355c3c53a31a21af86f258384a08"
 dependencies = [
  "anyhow",
  "nekoton-abi",
@@ -1726,7 +1726,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.13.0"
-source = "git+https://github.com/broxus/nekoton.git#9b4d401c686db225fc7bce94869bd85d072934cd"
+source = "git+https://github.com/broxus/nekoton.git#511d3112fddc355c3c53a31a21af86f258384a08"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -3071,7 +3071,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.4.1"
-source = "git+https://github.com/broxus/ton-indexer.git#0124a65a6e31f0206408a2294c007df3ba8f912d"
+source = "git+https://github.com/broxus/ton-indexer.git#72f9e6335a0b51d7675206867eaf835cf25f3854"
 dependencies = [
  "ahash",
  "anyhow",
