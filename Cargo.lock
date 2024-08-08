@@ -861,9 +861,9 @@ dependencies = [
 
 [[package]]
 name = "everscale-network"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c027f89fc3be3dc5eb9a6e30fc4118d254ed56f8f53a31e6addccf56f27067ef"
+checksum = "19f25d8b1ab4e223f7141db064f5b5d197d1c20cd1d44560661748ae7dc1fbf8"
 dependencies = [
  "aes",
  "ahash",
@@ -1269,7 +1269,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.5.7",
+ "socket2 0.4.10",
  "tokio",
  "tower-service",
  "tracing",
