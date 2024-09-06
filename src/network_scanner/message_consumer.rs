@@ -21,7 +21,7 @@ impl MessageConsumer {
             .set("group.id", &config.group_id)
             .set("bootstrap.servers", &config.brokers)
             .set("enable.partition.eof", "false")
-            .set("session.timeout.ms", &config.session_timeout_ms.to_string())
+            .set("session.timeout.ms", config.session_timeout_ms.to_string())
             .set("enable.auto.commit", "false");
 
         #[cfg(feature = "sasl")]
