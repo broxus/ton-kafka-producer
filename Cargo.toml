@@ -17,7 +17,7 @@ broxus-util = { version = "0.2", features = [
     "public-ip",
     "signal",
     "config",
-    "metrics"
+    "metrics",
 ], default-features = false }
 bytes = "1.2.1"
 chrono = "0.4.22"
@@ -43,7 +43,7 @@ ton_block = { git = "https://github.com/broxus/ton-labs-block" }
 ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor.git" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 
-ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json" }
+ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json", rev = "f4f6581d2306e99fc44404982a9038bd1e0d8dc1" }
 
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = [
     "count-cells",
@@ -56,7 +56,10 @@ bytesize = "1.2.0"
 metrics-exporter-prometheus = "0.13.0"
 
 [dev-dependencies]
-cargo-husky = { version = "1", features = ["run-cargo-clippy", "run-cargo-fmt"] }
+cargo-husky = { version = "1", features = [
+    "run-cargo-clippy",
+    "run-cargo-fmt",
+] }
 
 [features]
 default = ["sasl"]
@@ -67,7 +70,13 @@ ton = ["ton_block/ton", "ton-indexer/ton"]
 [package.metadata.deb]
 depends = "libstdc++6[amd64]"
 section = "utility"
-assets = [["target/release/ton-kafka-producer", "/usr/local/bin/ton-kafka-producer", "755"]]
+assets = [
+    [
+        "target/release/ton-kafka-producer",
+        "/usr/local/bin/ton-kafka-producer",
+        "755",
+    ],
+]
 conf-files = ["/etc/ton-kafka-producer/"]
 maintainer-scripts = "contrib/"
 
