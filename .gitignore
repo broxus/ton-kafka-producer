@@ -6,3 +6,4 @@ db/
 /adnl-keys.json
 /config.yaml
 /ton-global.config.json
+.scratch

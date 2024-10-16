@@ -241,7 +241,6 @@ pub struct KafkaConsumerConfig {
     pub topic: String,
     pub brokers: String,
     pub group_id: String,
-    #[cfg(feature = "sasl")]
     #[serde(default)]
     pub security_config: Option<SecurityConfig>,
     pub session_timeout_ms: u32,
@@ -255,8 +254,6 @@ pub struct KafkaProducerConfig {
     pub message_timeout_ms: Option<u32>,
     pub message_max_size: Option<usize>,
     pub attempt_interval_ms: u64,
-    #[cfg(feature = "sasl")]
-    #[serde(default)]
     pub security_config: Option<SecurityConfig>,
     #[serde(default = "default_batch_flush_threshold_size")]
     pub batch_flush_threshold_size: usize,
@@ -274,7 +271,10 @@ fn default_batch_flush_threshold_ms() -> u64 {
 
 #[derive(Debug, Clone, Deserialize)]
 pub enum SecurityConfig {
+    #[cfg(feature = "sasl")]
     Sasl(SaslConfig),
+    #[cfg(feature = "ssl")]
+    Ssl(SslConfig),
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -289,6 +289,17 @@ pub struct SaslConfig {
     pub sasl_mechanism: String,
     pub sasl_username: String,
     pub sasl_password: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SslConfig {
+    pub security_protocol: String,
+    pub ssl_ca_location: String,
+    pub ssl_key_location: String,
+    pub ssl_certificate_location: String,
+    #[serde(default)]
+    pub enable_ssl_certificate_verification: Option<bool>,
 }
 
 impl ConfigExt for ton_indexer::GlobalConfig {

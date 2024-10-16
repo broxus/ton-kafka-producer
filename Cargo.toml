@@ -62,8 +62,9 @@ cargo-husky = { version = "1", features = [
 ] }
 
 [features]
-default = ["sasl"]
+default = ["sasl", "ssl"]
 sasl = ["rdkafka/sasl"]
+ssl = ["rdkafka/ssl"]
 venom = ["ton_block/venom", "ton-indexer/venom"]
 ton = ["ton_block/ton", "ton-indexer/ton"]
 

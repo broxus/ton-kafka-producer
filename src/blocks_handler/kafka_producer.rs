@@ -47,21 +47,40 @@ impl KafkaProducer {
             client_config.set("message.max.bytes", message_max_size.to_string());
         }
 
-        #[cfg(feature = "sasl")]
-        if let Some(SecurityConfig::Sasl(sasl)) = &config.security_config {
-            client_config
-                .set("security.protocol", &sasl.security_protocol)
-                .set("ssl.ca.location", &sasl.ssl_ca_location)
-                .set("sasl.mechanism", &sasl.sasl_mechanism)
-                .set("sasl.username", &sasl.sasl_username)
-                .set("sasl.password", &sasl.sasl_password);
+        #[cfg(any(feature = "sasl", feature = "ssl"))]
+        match &config.security_config {
+            #[cfg(feature = "sasl")]
+            Some(SecurityConfig::Sasl(config)) => {
+                client_config
+                    .set("security.protocol", &config.security_protocol)
+                    .set("ssl.ca.location", &config.ssl_ca_location)
+                    .set("sasl.mechanism", &config.sasl_mechanism)
+                    .set("sasl.username", &config.sasl_username)
+                    .set("sasl.password", &config.sasl_password);
 
-            if let Some(ssl_keystore_location) = sasl.ssl_keystore_location.clone() {
-                client_config.set("ssl.keystore.location", ssl_keystore_location);
+                if let Some(ssl_keystore_location) = config.ssl_keystore_location.clone() {
+                    client_config.set("ssl.keystore.location", ssl_keystore_location);
+                }
+                if let Some(ssl_keystore_password) = config.ssl_keystore_password.clone() {
+                    client_config.set("ssl.keystore.password", ssl_keystore_password);
+                }
             }
-            if let Some(ssl_keystore_password) = sasl.ssl_keystore_password.clone() {
-                client_config.set("ssl.keystore.password", ssl_keystore_password);
+            #[cfg(feature = "ssl")]
+            Some(SecurityConfig::Ssl(config)) => {
+                client_config
+                    .set("security.protocol", &config.security_protocol)
+                    .set("ssl.ca.location", &config.ssl_ca_location)
+                    .set("ssl.key.location", &config.ssl_key_location)
+                    .set("ssl.certificate.location", &config.ssl_certificate_location);
+
+                if let Some(enable_verification) = config.enable_ssl_certificate_verification {
+                    client_config.set(
+                        "enable.ssl.certificate.verification",
+                        if enable_verification { "true" } else { "false" },
+                    );
+                }
             }
+            None => {}
         }
 
         let producer = client_config.create()?;
