@@ -97,7 +97,7 @@ dependencies = [
 [[package]]
 name = "archive-uploader"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#72f9e6335a0b51d7675206867eaf835cf25f3854"
+source = "git+https://www.github.com/broxus/ton-indexer.git?branch=feature/unwrap-apply#0c84974c005181de9a0afd274836d824fc14933a"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -1189,7 +1189,7 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#72f9e6335a0b51d7675206867eaf835cf25f3854"
+source = "git+https://www.github.com/broxus/ton-indexer.git?branch=feature/unwrap-apply#0c84974c005181de9a0afd274836d824fc14933a"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -3352,7 +3352,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.4.1"
-source = "git+https://github.com/broxus/ton-indexer.git#72f9e6335a0b51d7675206867eaf835cf25f3854"
+source = "git+https://www.github.com/broxus/ton-indexer.git?branch=feature/unwrap-apply#0c84974c005181de9a0afd274836d824fc14933a"
 dependencies = [
  "ahash",
  "anyhow",
@@ -3460,7 +3460,7 @@ dependencies = [
 [[package]]
 name = "ton_block"
 version = "1.9.73"
-source = "git+https://github.com/broxus/ton-labs-block#eb87ac3abcf6b489d51e4da2e52f850594a1644f"
+source = "git+https://www.github.com/broxus/ton-labs-block?branch=feature/storage-extra#76aff6f652354df3dfdcda8955dec5268259f98a"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -3482,7 +3482,7 @@ dependencies = [
 [[package]]
 name = "ton_block_json"
 version = "0.7.3"
-source = "git+https://github.com/broxus/ton-labs-block-json?rev=f4f6581d2306e99fc44404982a9038bd1e0d8dc1#f4f6581d2306e99fc44404982a9038bd1e0d8dc1"
+source = "git+https://github.com/broxus/ton-labs-block-json?branch=feature/ton-block-account-storage#aa2e148d1d531c1b8a5c9ca931061ec9247b4c9e"
 dependencies = [
  "anyhow",
  "base64 0.13.1",

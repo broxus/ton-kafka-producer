@@ -43,8 +43,7 @@ ton_block = { git = "https://github.com/broxus/ton-labs-block" }
 ton-block-compressor = { git = "https://github.com/broxus/ton-block-compressor.git" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 
-ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json", rev = "f4f6581d2306e99fc44404982a9038bd1e0d8dc1" }
-
+ton_block_json = { git = "https://github.com/broxus/ton-labs-block-json", branch = "feature/ton-block-account-storage"}
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", features = [
     "count-cells",
     "archive-uploader",
@@ -54,6 +53,12 @@ tracing = "0.1.34"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 bytesize = "1.2.0"
 metrics-exporter-prometheus = "0.13.0"
+
+[patch."https://github.com/broxus/ton-indexer.git"]
+ton-indexer = { git = "https://www.github.com/broxus/ton-indexer.git", branch = "feature/unwrap-apply"}
+
+[patch."https://github.com/broxus/ton-labs-block"]
+ton_block = { git = "https://www.github.com/broxus/ton-labs-block", branch = "feature/storage-extra"}
 
 [dev-dependencies]
 cargo-husky = { version = "1", features = [
@@ -66,7 +71,7 @@ default = ["sasl", "ssl"]
 sasl = ["rdkafka/sasl"]
 ssl = ["rdkafka/ssl"]
 venom = ["ton_block/venom", "ton-indexer/venom"]
-ton = ["ton_block/ton", "ton-indexer/ton"]
+ton = ["ton_block/ton", "ton-indexer/ton", "ton_block_json/ton"]
 
 [package.metadata.deb]
 depends = "libstdc++6[amd64]"

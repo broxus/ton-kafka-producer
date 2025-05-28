@@ -37,6 +37,7 @@ impl GqlProducer {
         })
     }
 
+    #[allow(unused)]
     pub async fn handle_state(&self, state: &ShardStateStuff) -> Result<()> {
         let producer = match &self.account_producer {
             Some(producer) => producer,
@@ -55,7 +56,7 @@ impl GqlProducer {
             Ok(true)
         })?;
 
-        tasks.try_collect().await?;
+        tasks.try_collect::<()>().await?;
 
         Ok(())
     }
